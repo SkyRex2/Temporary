@@ -418,3 +418,202 @@ Your app should now be available at `http://localhost:4200`. You will see the si
   - `SearchComponent` (handles searching expenses/budgets)
   
 With this step-by-step approach and the full code provided, your Angular application should work end-to-end for managing expenses and budgets. Let me know if you encounter any issues during setup!
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+The error you're encountering is due to a mismatch between **standalone components** and traditional NgModules. Angular now supports standalone components, which means they don’t need to be declared in an NgModule. However, I mistakenly mixed up the two approaches in the earlier steps. Let's fix this by using **standalone components** properly in your project.
+
+We'll also correct the `appConfig` issue and stick to the correct approach for standalone components.
+
+Here’s an updated step-by-step guide, focusing on making **standalone components** work properly:
+
+---
+
+## Step 1: Modify `app.config.ts` to Import Standalone Components
+
+Instead of declaring components in an NgModule, you should import them directly as standalone components.
+
+### File: `src/app/app.config.ts`
+
+```typescript
+import { provideHttpClient } from '@angular/common/http';
+import { provideRouter } from '@angular/router';
+import { bootstrapApplication } from '@angular/platform-browser';
+import { AppComponent } from './app.component';
+import { DashboardComponent } from './dashboard/dashboard.component';
+import { ExpenseManagementComponent } from './expense-management/expense-management.component';
+import { BudgetManagementComponent } from './budget-management/budget-management.component';
+import { SearchComponent } from './search/search.component';
+
+bootstrapApplication(AppComponent, {
+  providers: [
+    provideHttpClient(),
+    provideRouter([
+      { path: 'expense', component: ExpenseManagementComponent },
+      { path: 'budget', component: BudgetManagementComponent },
+      { path: 'search', component: SearchComponent },
+      { path: '', redirectTo: '/expense', pathMatch: 'full' },
+    ]),
+  ],
+});
+```
+
+### Explanation:
+- **`bootstrapApplication`** is used to bootstrap the application with standalone components.
+- Instead of declaring components in an `NgModule`, we now import them directly and configure routing via `provideRouter()`.
+
+---
+
+## Step 2: Convert Components to Standalone
+
+For all the components (`DashboardComponent`, `ExpenseManagementComponent`, `BudgetManagementComponent`, `SearchComponent`), you need to ensure they are **standalone**.
+
+Here’s how to update your components to standalone mode.
+
+### File: `src/app/dashboard/dashboard.component.ts`
+
+```typescript
+import { Component } from '@angular/core';
+import { CommonModule } from '@angular/common';
+import { RouterModule } from '@angular/router';
+
+@Component({
+  selector: 'app-dashboard',
+  standalone: true,
+  imports: [CommonModule, RouterModule],
+  templateUrl: './dashboard.component.html',
+  styleUrls: ['./dashboard.component.css'],
+})
+export class DashboardComponent {}
+```
+
+### File: `src/app/expense-management/expense-management.component.ts`
+
+```typescript
+import { Component } from '@angular/core';
+import { HttpClientModule } from '@angular/common/http';
+import { FormsModule } from '@angular/forms';
+import { CommonModule } from '@angular/common';
+
+@Component({
+  selector: 'app-expense-management',
+  standalone: true,
+  imports: [HttpClientModule, FormsModule, CommonModule],
+  templateUrl: './expense-management.component.html',
+  styleUrls: ['./expense-management.component.css'],
+})
+export class ExpenseManagementComponent {
+  // component code remains the same
+}
+```
+
+### File: `src/app/budget-management/budget-management.component.ts`
+
+```typescript
+import { Component } from '@angular/core';
+import { HttpClientModule } from '@angular/common/http';
+import { FormsModule } from '@angular/forms';
+import { CommonModule } from '@angular/common';
+
+@Component({
+  selector: 'app-budget-management',
+  standalone: true,
+  imports: [HttpClientModule, FormsModule, CommonModule],
+  templateUrl: './budget-management.component.html',
+  styleUrls: ['./budget-management.component.css'],
+})
+export class BudgetManagementComponent {
+  // component code remains the same
+}
+```
+
+### File: `src/app/search/search.component.ts`
+
+```typescript
+import { Component } from '@angular/core';
+import { HttpClientModule } from '@angular/common/http';
+import { FormsModule } from '@angular/forms';
+import { CommonModule } from '@angular/common';
+
+@Component({
+  selector: 'app-search',
+  standalone: true,
+  imports: [HttpClientModule, FormsModule, CommonModule],
+  templateUrl: './search.component.html',
+  styleUrls: ['./search.component.css'],
+})
+export class SearchComponent {
+  // component code remains the same
+}
+```
+
+### Explanation:
+- **`standalone: true`** is added to each component decorator, indicating that these are standalone components.
+- The required Angular modules (`CommonModule`, `FormsModule`, `HttpClientModule`) are imported directly into the component.
+
+---
+
+## Step 3: Modify `app.component.ts` and `app.component.html`
+
+Make sure your `app.component.ts` and `app.component.html` files are also set up for standalone components.
+
+### File: `src/app/app.component.ts`
+
+```typescript
+import { Component } from '@angular/core';
+import { CommonModule } from '@angular/common';
+import { RouterModule } from '@angular/router';
+import { DashboardComponent } from './dashboard/dashboard.component';
+
+@Component({
+  selector: 'app-root',
+  standalone: true,
+  imports: [CommonModule, RouterModule, DashboardComponent],
+  templateUrl: './app.component.html',
+  styleUrls: ['./app.component.css'],
+})
+export class AppComponent {
+  title = 'Expense and Budget Management';
+}
+```
+
+### File: `src/app/app.component.html`
+
+```html
+<div class="container">
+  <app-dashboard></app-dashboard>
+  <router-outlet></router-outlet>
+</div>
+```
+
+---
+
+## Step 4: Run the Application
+
+Now that all components are correctly configured as standalone, run the application:
+
+```bash
+ng serve
+```
+
+Your application should work without errors, allowing you to manage expenses, budgets, and search based on your specifications.
+
+---
+
+### Summary of Changes:
+- **Standalone Components**: All components are now standalone and use `bootstrapApplication` instead of `NgModule`.
+- **App Configuration**: The `app.config.ts` has been updated to use `provideRouter` and `bootstrapApplication`.
+
+Let me know if this resolves your issue or if any additional changes are needed!
