@@ -1,0 +1,420 @@
+
+---
+
+## Step 1: Create a New Angular Project
+
+First, create a new Angular project using the CLI:
+
+```bash
+ng new expense-tracker
+```
+
+Choose the options as needed (you can use default options). Once it's created, navigate to the project directory:
+
+```bash
+cd expense-tracker
+```
+
+---
+
+## Step 2: Install Dependencies
+
+You'll need to add `HttpClientModule` for making HTTP requests:
+
+```bash
+npm install @angular/common
+```
+
+---
+
+## Step 3: Modify `app.config.ts` (Module Configuration)
+
+Since your project doesn't have an `app.module.ts` file but has `app.config.ts`, we'll set up our module imports and component declarations in this file.
+
+### File: `src/app/app.config.ts`
+
+```typescript
+import { NgModule } from '@angular/core';
+import { BrowserModule } from '@angular/platform-browser';
+import { HttpClientModule } from '@angular/common/http';
+import { RouterModule } from '@angular/router';
+import { AppComponent } from './app.component';
+import { DashboardComponent } from './dashboard/dashboard.component';
+import { ExpenseManagementComponent } from './expense-management/expense-management.component';
+import { BudgetManagementComponent } from './budget-management/budget-management.component';
+import { SearchComponent } from './search/search.component';
+import { FormsModule } from '@angular/forms';
+
+@NgModule({
+  declarations: [
+    AppComponent,
+    DashboardComponent,
+    ExpenseManagementComponent,
+    BudgetManagementComponent,
+    SearchComponent
+  ],
+  imports: [
+    BrowserModule,
+    HttpClientModule,
+    FormsModule,
+    RouterModule.forRoot([
+      { path: 'expense', component: ExpenseManagementComponent },
+      { path: 'budget', component: BudgetManagementComponent },
+      { path: 'search', component: SearchComponent },
+      { path: '', redirectTo: '/expense', pathMatch: 'full' }
+    ])
+  ],
+  providers: [],
+  bootstrap: [AppComponent]
+})
+export class AppModule { }
+```
+
+### Explanation:
+- We've imported the necessary modules, including `HttpClientModule` for making HTTP requests, `FormsModule` for two-way data binding, and `RouterModule` for handling routing.
+- We also declared the components you'll use and set up routing for navigation between components.
+
+---
+
+## Step 4: Modify `app.routes.ts` (Routing)
+
+If you have a separate `app.routes.ts`, you can configure it as shown below:
+
+### File: `src/app/app.routes.ts`
+
+```typescript
+import { Routes } from '@angular/router';
+import { ExpenseManagementComponent } from './expense-management/expense-management.component';
+import { BudgetManagementComponent } from './budget-management/budget-management.component';
+import { SearchComponent } from './search/search.component';
+
+export const appRoutes: Routes = [
+  { path: 'expense', component: ExpenseManagementComponent },
+  { path: 'budget', component: BudgetManagementComponent },
+  { path: 'search', component: SearchComponent },
+  { path: '', redirectTo: '/expense', pathMatch: 'full' }
+];
+```
+
+Make sure this is linked correctly in `app.config.ts`.
+
+---
+
+## Step 5: Modify `app.component.ts` and `app.component.html`
+
+Now, modify your main `app.component.ts` and `app.component.html` files to include the dashboard (sidebar) and the router outlet.
+
+### File: `src/app/app.component.ts`
+
+```typescript
+import { Component } from '@angular/core';
+
+@Component({
+  selector: 'app-root',
+  templateUrl: './app.component.html',
+  styleUrls: ['./app.component.css']
+})
+export class AppComponent {
+  title = 'Expense and Budget Management';
+}
+```
+
+### File: `src/app/app.component.html`
+
+```html
+<div class="container">
+  <app-dashboard></app-dashboard>
+  <router-outlet></router-outlet>
+</div>
+```
+
+### File: `src/app/app.component.css`
+
+You can modify this for general styling as per your preference.
+
+---
+
+## Step 6: Create Sidebar (Dashboard Component)
+
+The sidebar will allow the user to switch between managing expenses, budgets, and searching.
+
+### File: `src/app/dashboard/dashboard.component.html`
+
+```html
+<div class="sidebar">
+  <ul>
+    <li><a routerLink="/expense">Manage Expenses</a></li>
+    <li><a routerLink="/budget">Manage Budgets</a></li>
+    <li><a routerLink="/search">Search</a></li>
+  </ul>
+</div>
+```
+
+### File: `src/app/dashboard/dashboard.component.css`
+
+```css
+.sidebar {
+  width: 200px;
+  height: 100vh;
+  background-color: #2c3e50;
+  color: white;
+  padding: 15px;
+}
+
+.sidebar ul {
+  list-style: none;
+  padding: 0;
+}
+
+.sidebar ul li {
+  margin: 10px 0;
+}
+
+.sidebar ul li a {
+  color: white;
+  text-decoration: none;
+}
+
+.sidebar ul li a:hover {
+  text-decoration: underline;
+}
+```
+
+---
+
+## Step 7: Create Expense Management Component
+
+### File: `src/app/expense-management/expense-management.component.ts`
+
+```typescript
+import { Component } from '@angular/core';
+import { HttpClient } from '@angular/common/http';
+
+@Component({
+  selector: 'app-expense-management',
+  templateUrl: './expense-management.component.html',
+  styleUrls: ['./expense-management.component.css']
+})
+export class ExpenseManagementComponent {
+  expenses = [];
+  newExpense = { amount: null, category: '', description: '', date: '' };
+
+  constructor(private http: HttpClient) {
+    this.getExpenses();
+  }
+
+  getExpenses() {
+    this.http.get('/api/expenses').subscribe((data: any) => this.expenses = data);
+  }
+
+  addExpense() {
+    this.http.post('/api/expenses', this.newExpense).subscribe(() => {
+      this.getExpenses();  // Refresh the list
+    });
+  }
+
+  deleteExpense(id: number) {
+    this.http.delete(`/api/expenses/${id}`).subscribe(() => {
+      this.getExpenses();  // Refresh the list
+    });
+  }
+}
+```
+
+### File: `src/app/expense-management/expense-management.component.html`
+
+```html
+<h2>Manage Expenses</h2>
+
+<!-- Form for adding new expense -->
+<div>
+  <h3>Add New Expense</h3>
+  <form (submit)="addExpense()">
+    <input type="number" placeholder="Amount" [(ngModel)]="newExpense.amount" />
+    <input type="text" placeholder="Category" [(ngModel)]="newExpense.category" />
+    <input type="text" placeholder="Description" [(ngModel)]="newExpense.description" />
+    <input type="date" [(ngModel)]="newExpense.date" />
+    <button type="submit">Add Expense</button>
+  </form>
+</div>
+
+<!-- List of expenses -->
+<div>
+  <h3>All Expenses</h3>
+  <ul>
+    <li *ngFor="let expense of expenses">
+      {{ expense.category }} - {{ expense.amount }} - {{ expense.date }}
+      <button (click)="deleteExpense(expense.id)">Delete</button>
+    </li>
+  </ul>
+</div>
+```
+
+---
+
+## Step 8: Create Budget Management Component
+
+The structure will be similar to the expense management component.
+
+### File: `src/app/budget-management/budget-management.component.ts`
+
+```typescript
+import { Component } from '@angular/core';
+import { HttpClient } from '@angular/common/http';
+
+@Component({
+  selector: 'app-budget-management',
+  templateUrl: './budget-management.component.html',
+  styleUrls: ['./budget-management.component.css']
+})
+export class BudgetManagementComponent {
+  budgets = [];
+  newBudget = { name: '', description: '', amount: null, startDate: '', endDate: '' };
+
+  constructor(private http: HttpClient) {
+    this.getBudgets();
+  }
+
+  getBudgets() {
+    this.http.get('/api/budgets').subscribe((data: any) => this.budgets = data);
+  }
+
+  addBudget() {
+    this.http.post('/api/budgets', this.newBudget).subscribe(() => {
+      this.getBudgets();  // Refresh the list
+    });
+  }
+
+  deleteBudget(id: number) {
+    this.http.delete(`/api/budgets/${id}`).subscribe(() => {
+      this.getBudgets();  // Refresh the list
+    });
+  }
+}
+```
+
+### File: `src/app/budget-management/budget-management.component.html`
+
+```html
+<h2>Manage Budgets</h2>
+
+<!-- Form for adding new budget -->
+<div>
+  <h3>Add New Budget</h3>
+  <form (submit)="addBudget()">
+    <input type="text" placeholder="Budget Name" [(ngModel)]="newBudget.name" />
+    <input type="text" placeholder="Description" [(ngModel)]="newBudget.description" />
+    <input type="number" placeholder="Amount" [(ngModel)]="newBudget.amount" />
+    <input type
+
+="date" placeholder="Start Date" [(ngModel)]="newBudget.startDate" />
+    <input type="date" placeholder="End Date" [(ngModel)]="newBudget.endDate" />
+    <button type="submit">Add Budget</button>
+  </form>
+</div>
+
+<!-- List of budgets -->
+<div>
+  <h3>All Budgets</h3>
+  <ul>
+    <li *ngFor="let budget of budgets">
+      {{ budget.name }} - {{ budget.amount }} - {{ budget.startDate }} to {{ budget.endDate }}
+      <button (click)="deleteBudget(budget.id)">Delete</button>
+    </li>
+  </ul>
+</div>
+```
+
+---
+
+## Step 9: Create Search Component
+
+This component will allow users to search based on multiple criteria for both expenses and budgets.
+
+### File: `src/app/search/search.component.ts`
+
+```typescript
+import { Component } from '@angular/core';
+import { HttpClient } from '@angular/common/http';
+
+@Component({
+  selector: 'app-search',
+  templateUrl: './search.component.html',
+  styleUrls: ['./search.component.css']
+})
+export class SearchComponent {
+  searchType = 'expense';  // 'expense' or 'budget'
+  searchParams = { id: '', category: '', startDate: '', endDate: '' };
+  results = [];
+
+  constructor(private http: HttpClient) {}
+
+  search() {
+    const endpoint = this.searchType === 'expense' ? '/api/expenses/search' : '/api/budgets/search';
+    this.http.post(endpoint, this.searchParams).subscribe((data: any) => {
+      this.results = data;
+    });
+  }
+}
+```
+
+### File: `src/app/search/search.component.html`
+
+```html
+<h2>Search</h2>
+
+<div>
+  <label for="searchType">Search for: </label>
+  <select id="searchType" [(ngModel)]="searchType">
+    <option value="expense">Expense</option>
+    <option value="budget">Budget</option>
+  </select>
+</div>
+
+<!-- Search form -->
+<div>
+  <h3>Enter Search Criteria</h3>
+  <form (submit)="search()">
+    <input type="text" placeholder="ID" [(ngModel)]="searchParams.id" />
+    <input type="text" placeholder="Category" [(ngModel)]="searchParams.category" />
+    <input type="date" placeholder="Start Date" [(ngModel)]="searchParams.startDate" />
+    <input type="date" placeholder="End Date" [(ngModel)]="searchParams.endDate" />
+    <button type="submit">Search</button>
+  </form>
+</div>
+
+<!-- Display search results -->
+<div>
+  <h3>Search Results</h3>
+  <ul>
+    <li *ngFor="let result of results">
+      {{ result | json }}
+    </li>
+  </ul>
+</div>
+```
+
+---
+
+## Step 10: Run the Application
+
+Now that you have set up all the components, run your Angular project:
+
+```bash
+ng serve
+```
+
+Your app should now be available at `http://localhost:4200`. You will see the sidebar for managing expenses, budgets, and the search feature.
+
+---
+
+## Summary of the Changes:
+- **`app.component.html`** includes the sidebar (`app-dashboard`) and a `router-outlet` to switch between components.
+- **`app.config.ts`** has the necessary imports and route configurations.
+- **Components created**: 
+  - `DashboardComponent` (sidebar navigation)
+  - `ExpenseManagementComponent` (manages expenses)
+  - `BudgetManagementComponent` (manages budgets)
+  - `SearchComponent` (handles searching expenses/budgets)
+  
+With this step-by-step approach and the full code provided, your Angular application should work end-to-end for managing expenses and budgets. Let me know if you encounter any issues during setup!
