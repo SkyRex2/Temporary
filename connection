@@ -1,0 +1,252 @@
+Connection
+
+
+To connect your Angular frontend with your Spring Boot backend, you'll need to follow a process where the Angular app makes HTTP requests to the backend API. Here’s an **end-to-end guide** to help you successfully connect your frontend to the backend.
+
+### Step 1: Backend Setup (Spring Boot)
+
+Ensure your Spring Boot backend is up and running, and you have REST API endpoints available. You should expose endpoints for the operations related to **Expense** and **Budget** management. 
+
+For example, your Spring Boot backend might have endpoints like:
+- `GET /api/expenses` - to fetch all expenses
+- `POST /api/expenses` - to add a new expense
+- `PUT /api/expenses/{id}` - to update an expense
+- `DELETE /api/expenses/{id}` - to delete an expense
+- `GET /api/budgets` - to fetch all budgets
+- `POST /api/budgets` - to add a new budget
+- `PUT /api/budgets/{id}` - to update a budget
+- `DELETE /api/budgets/{id}` - to delete a budget
+
+Make sure your backend is running on `http://localhost:8080` (or another port if configured).
+
+### Step 2: Configure the Angular App to Use HttpClient
+
+1. **Import `HttpClientModule`** in your Angular application.
+
+Open `app.module.ts` and add the `HttpClientModule` to the imports array:
+
+```typescript
+import { HttpClientModule } from '@angular/common/http';
+
+@NgModule({
+  declarations: [ /* your components here */ ],
+  imports: [
+    BrowserModule,
+    HttpClientModule, // Add HttpClientModule
+    RouterModule.forRoot(routes)
+  ],
+  providers: [],
+  bootstrap: [AppComponent]
+})
+export class AppModule { }
+```
+
+### Step 3: Create Angular Service to Handle API Calls
+
+Create a service that will manage the communication between your Angular app and the backend.
+
+Run the following command to generate the service:
+```bash
+ng generate service services/expense-budget
+```
+
+This service will contain methods to call the backend API endpoints.
+
+#### `expense-budget.service.ts`
+```typescript
+import { Injectable } from '@angular/core';
+import { HttpClient } from '@angular/common/http';
+import { Observable } from 'rxjs';
+import { Expense } from '../models/expense.model';
+import { Budget } from '../models/budget.model';
+
+@Injectable({
+  providedIn: 'root'
+})
+export class ExpenseBudgetService {
+  private apiUrl = 'http://localhost:8080/api';  // Backend URL
+
+  constructor(private http: HttpClient) { }
+
+  // Expense methods
+  getAllExpenses(): Observable<Expense[]> {
+    return this.http.get<Expense[]>(`${this.apiUrl}/expenses`);
+  }
+
+  addExpense(expense: Expense): Observable<Expense> {
+    return this.http.post<Expense>(`${this.apiUrl}/expenses`, expense);
+  }
+
+  updateExpense(id: number, expense: Expense): Observable<Expense> {
+    return this.http.put<Expense>(`${this.apiUrl}/expenses/${id}`, expense);
+  }
+
+  deleteExpense(id: number): Observable<void> {
+    return this.http.delete<void>(`${this.apiUrl}/expenses/${id}`);
+  }
+
+  // Budget methods
+  getAllBudgets(): Observable<Budget[]> {
+    return this.http.get<Budget[]>(`${this.apiUrl}/budgets`);
+  }
+
+  addBudget(budget: Budget): Observable<Budget> {
+    return this.http.post<Budget>(`${this.apiUrl}/budgets`, budget);
+  }
+
+  updateBudget(id: number, budget: Budget): Observable<Budget> {
+    return this.http.put<Budget>(`${this.apiUrl}/budgets/${id}`, budget);
+  }
+
+  deleteBudget(id: number): Observable<void> {
+    return this.http.delete<void>(`${this.apiUrl}/budgets/${id}`);
+  }
+}
+```
+
+### Step 4: Update Components to Use the Service
+
+Now that you have a service to handle API requests, you need to integrate it into your components.
+
+For example, in your **ExpenseManagementComponent**, use the service to fetch, add, update, and delete expenses.
+
+#### `expense-management.component.ts`
+```typescript
+import { Component, OnInit } from '@angular/core';
+import { ExpenseBudgetService } from '../services/expense-budget.service';
+import { Expense } from '../models/expense.model';
+
+@Component({
+  selector: 'app-expense-management',
+  templateUrl: './expense-management.component.html',
+  styleUrls: ['./expense-management.component.css']
+})
+export class ExpenseManagementComponent implements OnInit {
+
+  expenses: Expense[] = [];
+  newExpense: Expense = {
+    id: 0,
+    amount: 0,
+    category: '',
+    description: '',
+    date: new Date()
+  };
+
+  constructor(private expenseBudgetService: ExpenseBudgetService) {}
+
+  ngOnInit(): void {
+    this.loadExpenses();
+  }
+
+  loadExpenses(): void {
+    this.expenseBudgetService.getAllExpenses().subscribe(
+      (data: Expense[]) => {
+        this.expenses = data;
+      },
+      (error) => {
+        console.error('Error loading expenses', error);
+      }
+    );
+  }
+
+  addExpense(): void {
+    this.expenseBudgetService.addExpense(this.newExpense).subscribe(
+      (data: Expense) => {
+        this.expenses.push(data);
+        this.newExpense = { id: 0, amount: 0, category: '', description: '', date: new Date() }; // Reset form
+      },
+      (error) => {
+        console.error('Error adding expense', error);
+      }
+    );
+  }
+
+  deleteExpense(id: number): void {
+    this.expenseBudgetService.deleteExpense(id).subscribe(() => {
+      this.expenses = this.expenses.filter(expense => expense.id !== id);
+    });
+  }
+}
+```
+
+Repeat the same for **BudgetManagementComponent**, making sure to interact with the `ExpenseBudgetService`.
+
+### Step 5: Create Models for Expense and Budget
+
+If you haven't already, create models (interfaces) for Expense and Budget to structure the data.
+
+#### Generate models:
+```bash
+ng generate interface models/expense
+ng generate interface models/budget
+```
+
+#### `expense.model.ts`
+```typescript
+export interface Expense {
+  id: number;
+  amount: number;
+  category: string;
+  description: string;
+  date: Date;
+}
+```
+
+#### `budget.model.ts`
+```typescript
+export interface Budget {
+  id: number;
+  name: string;
+  description: string;
+  amount: number;
+  startDate: Date;
+  endDate: Date;
+}
+```
+
+### Step 6: Run Your Backend and Frontend
+
+1. **Start your Spring Boot backend**:
+   Make sure your Spring Boot backend is running on `http://localhost:8080`. This will serve the API endpoints.
+
+2. **Start your Angular frontend**:
+   Run the following command to start the Angular app:
+   ```bash
+   ng serve
+   ```
+
+3. **Access the application**:  
+   Open your browser and go to `http://localhost:4200`. The Angular app should load and connect to the backend.
+
+### Step 7: Testing the Application
+
+- **Expense Management**: You should be able to add, update, and delete expenses.
+- **Budget Management**: Similarly, you should be able to manage budgets using the frontend connected to the backend.
+  
+Check that each component (expense/budget) fetches data from the backend and updates/deletes items correctly.
+
+### Troubleshooting
+
+- **CORS Issues**: If your backend blocks requests from your frontend (due to Cross-Origin Resource Sharing), add the following configuration to your Spring Boot app:
+
+  ```java
+  @Configuration
+  public class CorsConfig {
+      @Bean
+      public WebMvcConfigurer corsConfigurer() {
+          return new WebMvcConfigurer() {
+              @Override
+              public void addCorsMappings(CorsRegistry registry) {
+                  registry.addMapping("/**")
+                          .allowedOrigins("http://localhost:4200")
+                          .allowedMethods("GET", "POST", "PUT", "DELETE")
+                          .allowedHeaders("*");
+              }
+          };
+      }
+  }
+  ```
+
+This allows the frontend to communicate with the backend without CORS errors.
+
+Let me know if you encounter any issues during this process!
