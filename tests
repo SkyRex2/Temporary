@@ -1,0 +1,509 @@
+To use only JUnit 5 for your project, you'll need to adjust the dependencies in your `pom.xml` and ensure that the tests are written in compliance with JUnit 5. Here are the required changes:
+
+### 1. Dependencies for JUnit 5 in `pom.xml`
+
+```xml
+<dependencies>
+    <!-- Spring Boot Starter Test (includes JUnit 5) -->
+    <dependency>
+        <groupId>org.springframework.boot</groupId>
+        <artifactId>spring-boot-starter-test</artifactId>
+        <scope>test</scope>
+        <exclusions>
+            <exclusion>
+                <groupId>org.junit.vintage</groupId>
+                <artifactId>junit-vintage-engine</artifactId> <!-- Exclude vintage to ensure only JUnit 5 -->
+            </exclusion>
+        </exclusions>
+    </dependency>
+
+    <!-- Mockito Core for Unit Tests -->
+    <dependency>
+        <groupId>org.mockito</groupId>
+        <artifactId>mockito-core</artifactId>
+        <scope>test</scope>
+    </dependency>
+
+    <!-- Mockito JUnit Jupiter for JUnit 5 Integration -->
+    <dependency>
+        <groupId>org.mockito</groupId>
+        <artifactId>mockito-junit-jupiter</artifactId>
+        <scope>test</scope>
+    </dependency>
+
+    <!-- Hamcrest for assertions (optional, but useful for custom matchers) -->
+    <dependency>
+        <groupId>org.hamcrest</groupId>
+        <artifactId>hamcrest</artifactId>
+        <scope>test</scope>
+    </dependency>
+</dependencies>
+```
+
+### 2. Basic Unit Test Structure for Backend
+
+Here are the basic unit tests required for your project with `JUnit 5`. These are stored under `src/test/java`.
+
+#### Example: ExpenseServiceTest.java
+
+```java
+package com.project.financialmanagement.service;
+
+import com.project.financialmanagement.model.Expense;
+import com.project.financialmanagement.repository.ExpenseRepository;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.mockito.InjectMocks;
+import org.mockito.Mock;
+import org.mockito.MockitoAnnotations;
+
+import java.util.Optional;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.mockito.ArgumentMatchers.anyInt;
+import static org.mockito.Mockito.when;
+
+public class ExpenseServiceTest {
+
+    @InjectMocks
+    private ExpenseService expenseService;
+
+    @Mock
+    private ExpenseRepository expenseRepository;
+
+    private Expense expense;
+
+    @BeforeEach
+    public void setup() {
+        MockitoAnnotations.openMocks(this);
+        expense = new Expense();
+        expense.setId(1);
+        expense.setAmount(100);
+        expense.setCategory("Food");
+    }
+
+    @Test
+    public void testGetExpenseById() {
+        when(expenseRepository.findById(anyInt())).thenReturn(Optional.of(expense));
+
+        Expense retrievedExpense = expenseService.getExpenseById(1);
+
+        assertEquals(expense.getId(), retrievedExpense.getId());
+        assertEquals(expense.getAmount(), retrievedExpense.getAmount());
+    }
+}
+```
+
+#### Example: BudgetServiceTest.java
+
+```java
+package com.project.financialmanagement.service;
+
+import com.project.financialmanagement.model.Budget;
+import com.project.financialmanagement.repository.BudgetRepository;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.mockito.InjectMocks;
+import org.mockito.Mock;
+import org.mockito.MockitoAnnotations;
+
+import java.util.Optional;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.mockito.ArgumentMatchers.anyInt;
+import static org.mockito.Mockito.when;
+
+public class BudgetServiceTest {
+
+    @InjectMocks
+    private BudgetService budgetService;
+
+    @Mock
+    private BudgetRepository budgetRepository;
+
+    private Budget budget;
+
+    @BeforeEach
+    public void setup() {
+        MockitoAnnotations.openMocks(this);
+        budget = new Budget();
+        budget.setId(1);
+        budget.setAmount(5000);
+        budget.setBudgetName("Monthly");
+    }
+
+    @Test
+    public void testGetBudgetById() {
+        when(budgetRepository.findById(anyInt())).thenReturn(Optional.of(budget));
+
+        Budget retrievedBudget = budgetService.getBudgetById(1);
+
+        assertEquals(budget.getId(), retrievedBudget.getId());
+        assertEquals(budget.getAmount(), retrievedBudget.getAmount());
+    }
+}
+```
+
+### 3. Controller Test Example
+
+#### Example: ExpenseControllerTest.java
+
+```java
+package com.project.financialmanagement.controller;
+
+import com.project.financialmanagement.model.Expense;
+import com.project.financialmanagement.service.ExpenseService;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.mockito.InjectMocks;
+import org.mockito.Mock;
+import org.mockito.MockitoAnnotations;
+import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
+import org.springframework.http.MediaType;
+import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.test.web.servlet.setup.MockMvcBuilders;
+
+import java.util.Collections;
+
+import static org.mockito.Mockito.when;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+
+@WebMvcTest(ExpenseController.class)
+public class ExpenseControllerTest {
+
+    private MockMvc mockMvc;
+
+    @InjectMocks
+    private ExpenseController expenseController;
+
+    @Mock
+    private ExpenseService expenseService;
+
+    private Expense expense;
+
+    @BeforeEach
+    public void setup() {
+        MockitoAnnotations.openMocks(this);
+        mockMvc = MockMvcBuilders.standaloneSetup(expenseController).build();
+        expense = new Expense();
+        expense.setId(1);
+        expense.setAmount(100);
+        expense.setCategory("Food");
+    }
+
+    @Test
+    public void testGetAllExpenses() throws Exception {
+        when(expenseService.getAllExpenses()).thenReturn(Collections.singletonList(expense));
+
+        mockMvc.perform(get("/expenses")
+                .contentType(MediaType.APPLICATION_JSON))
+                .andExpect(status().isOk())
+                .andExpect(content().json("[{'id':1,'amount':100,'category':'Food'}]"));
+    }
+}
+```
+
+### 4. Directory Structure
+
+```
+src
+├── main
+│   ├── java
+│   │   └── com
+│   │       └── project
+│   │           └── financialmanagement
+│   │               ├── controller
+│   │               ├── model
+│   │               ├── repository
+│   │               └── service
+│
+├── test
+│   ├── java
+│   │   └── com
+│   │       └── project
+│   │           └── financialmanagement
+│   │               ├── controller
+│   │               ├── service
+```
+
+This will ensure the required unit tests are in place for your project, focusing only on using JUnit 5, without including any unnecessary dependencies. You can extend these tests by adding more specific cases (e.g., error handling, edge cases) based on your application logic.
+
+#### Run Tests:
+
+```bash
+mvn test
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+I’ve reviewed the code provided and adjusted it to ensure it aligns with your requirements for JUnit 5, Spring Boot, and your project’s backend. Below are some refinements, and I’ll point out any potential areas for issues or improvements.
+
+### 1. **`pom.xml` Dependencies**
+Ensure the `pom.xml` is configured correctly for JUnit 5:
+
+```xml
+<dependencies>
+    <!-- Spring Boot Starter Test for JUnit 5 -->
+    <dependency>
+        <groupId>org.springframework.boot</groupId>
+        <artifactId>spring-boot-starter-test</artifactId>
+        <scope>test</scope>
+        <exclusions>
+            <exclusion>
+                <groupId>org.junit.vintage</groupId>
+                <artifactId>junit-vintage-engine</artifactId> <!-- Exclude JUnit 4 -->
+            </exclusion>
+        </exclusions>
+    </dependency>
+
+    <!-- Mockito Core -->
+    <dependency>
+        <groupId>org.mockito</groupId>
+        <artifactId>mockito-core</artifactId>
+        <scope>test</scope>
+    </dependency>
+
+    <!-- Mockito JUnit 5 Integration -->
+    <dependency>
+        <groupId>org.mockito</groupId>
+        <artifactId>mockito-junit-jupiter</artifactId>
+        <scope>test</scope>
+    </dependency>
+
+    <!-- Hamcrest (Optional, but useful for custom matchers) -->
+    <dependency>
+        <groupId>org.hamcrest</groupId>
+        <artifactId>hamcrest</artifactId>
+        <scope>test</scope>
+    </dependency>
+</dependencies>
+```
+
+### 2. **Service Layer Unit Test Example**
+Here's the refined test class for your `ExpenseService` and `BudgetService`.
+
+#### `ExpenseServiceTest.java`
+```java
+package com.project.financialmanagement.service;
+
+import com.project.financialmanagement.model.Expense;
+import com.project.financialmanagement.repository.ExpenseRepository;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.mockito.InjectMocks;
+import org.mockito.Mock;
+import org.mockito.MockitoAnnotations;
+
+import java.util.Optional;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.mockito.ArgumentMatchers.anyInt;
+import static org.mockito.Mockito.when;
+
+public class ExpenseServiceTest {
+
+    @InjectMocks
+    private ExpenseService expenseService;
+
+    @Mock
+    private ExpenseRepository expenseRepository;
+
+    private Expense expense;
+
+    @BeforeEach
+    public void setup() {
+        MockitoAnnotations.openMocks(this); // Initializes mocks
+        expense = new Expense();
+        expense.setId(1);
+        expense.setAmount(100);
+        expense.setCategory("Food");
+    }
+
+    @Test
+    public void testGetExpenseById() {
+        when(expenseRepository.findById(anyInt())).thenReturn(Optional.of(expense));
+
+        Expense retrievedExpense = expenseService.getExpenseById(1);
+
+        assertEquals(expense.getId(), retrievedExpense.getId());
+        assertEquals(expense.getAmount(), retrievedExpense.getAmount());
+    }
+}
+```
+
+#### `BudgetServiceTest.java`
+```java
+package com.project.financialmanagement.service;
+
+import com.project.financialmanagement.model.Budget;
+import com.project.financialmanagement.repository.BudgetRepository;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.mockito.InjectMocks;
+import org.mockito.Mock;
+import org.mockito.MockitoAnnotations;
+
+import java.util.Optional;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.mockito.ArgumentMatchers.anyInt;
+import static org.mockito.Mockito.when;
+
+public class BudgetServiceTest {
+
+    @InjectMocks
+    private BudgetService budgetService;
+
+    @Mock
+    private BudgetRepository budgetRepository;
+
+    private Budget budget;
+
+    @BeforeEach
+    public void setup() {
+        MockitoAnnotations.openMocks(this);
+        budget = new Budget();
+        budget.setId(1);
+        budget.setAmount(5000);
+        budget.setBudgetName("Monthly");
+    }
+
+    @Test
+    public void testGetBudgetById() {
+        when(budgetRepository.findById(anyInt())).thenReturn(Optional.of(budget));
+
+        Budget retrievedBudget = budgetService.getBudgetById(1);
+
+        assertEquals(budget.getId(), retrievedBudget.getId());
+        assertEquals(budget.getAmount(), retrievedBudget.getAmount());
+    }
+}
+```
+
+### 3. **Controller Layer Unit Test Example**
+Here’s how to structure unit tests for your controller layer using Spring's `MockMvc`:
+
+#### `ExpenseControllerTest.java`
+```java
+package com.project.financialmanagement.controller;
+
+import com.project.financialmanagement.model.Expense;
+import com.project.financialmanagement.service.ExpenseService;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.mockito.InjectMocks;
+import org.mockito.Mock;
+import org.mockito.MockitoAnnotations;
+import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
+import org.springframework.http.MediaType;
+import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.test.web.servlet.setup.MockMvcBuilders;
+
+import java.util.Collections;
+
+import static org.mockito.Mockito.when;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+
+@WebMvcTest(ExpenseController.class)
+public class ExpenseControllerTest {
+
+    private MockMvc mockMvc;
+
+    @InjectMocks
+    private ExpenseController expenseController;
+
+    @Mock
+    private ExpenseService expenseService;
+
+    private Expense expense;
+
+    @BeforeEach
+    public void setup() {
+        MockitoAnnotations.openMocks(this);
+        mockMvc = MockMvcBuilders.standaloneSetup(expenseController).build();
+        expense = new Expense();
+        expense.setId(1);
+        expense.setAmount(100);
+        expense.setCategory("Food");
+    }
+
+    @Test
+    public void testGetAllExpenses() throws Exception {
+        when(expenseService.getAllExpenses()).thenReturn(Collections.singletonList(expense));
+
+        mockMvc.perform(get("/expenses")
+                .contentType(MediaType.APPLICATION_JSON))
+                .andExpect(status().isOk())
+                .andExpect(content().json("[{'id':1,'amount':100,'category':'Food'}]"));
+    }
+}
+```
+
+### 4. **Test Folder Structure**
+Ensure your folder structure under `src/test/java/` is as follows:
+
+```
+src
+├── test
+│   ├── java
+│   │   └── com
+│   │       └── project
+│   │           └── financialmanagement
+│   │               ├── controller
+│   │               │   └── ExpenseControllerTest.java
+│   │               ├── service
+│   │               │   └── ExpenseServiceTest.java
+│   │               │   └── BudgetServiceTest.java
+│   │               ├── model
+│   │               └── repository
+```
+
+### 5. **JUnit 5 Basic Test Annotations**
+Make sure you are using JUnit 5 annotations correctly:
+
+- `@Test`: Marks a test method.
+- `@BeforeEach`: Runs before each test (used to set up test data).
+- `@Mock`: Mocks the dependencies.
+- `@InjectMocks`: Injects mocks into the object being tested.
+- `@WebMvcTest`: Used for testing Spring MVC controllers.
+
+### 6. **Running Tests**
+Run your tests using Maven:
+
+```bash
+mvn test
+```
+
+This will run all unit tests across your project. The structure and configuration provided should be fully compatible with the latest version of Spring Boot and JUnit 5.
+
+By following this approach, you should be able to run unit tests for your backend services and controllers with JUnit 5 and Mockito. Let me know if you face any issues!
