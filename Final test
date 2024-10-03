@@ -1,0 +1,658 @@
+For your project that includes `Expense`, `Budget`, and `User` in one application, here’s a suggested file structure for unit tests and end-to-end (E2E) tests.
+
+### **File Structure**:
+```
+src
+ ├── main
+ │   └── java
+ │       └── yg
+ │           └── bootcamp
+ │               └── demo
+ │                   ├── controller
+ │                   │   ├── BudgetController.java
+ │                   │   ├── ExpenseController.java
+ │                   │   └── UserController.java
+ │                   ├── model
+ │                   │   ├── Budget.java
+ │                   │   ├── Expense.java
+ │                   │   └── User.java
+ │                   ├── repository
+ │                   │   ├── BudgetRepository.java
+ │                   │   ├── ExpenseRepository.java
+ │                   │   └── UserRepository.java
+ │                   ├── service
+ │                   │   ├── BudgetService.java
+ │                   │   ├── ExpenseService.java
+ │                   │   └── UserService.java
+ │                   └── dto
+ │                       ├── BudgetDto.java
+ │                       ├── ExpenseDto.java
+ │                       └── UserDto.java
+ └── test
+     └── java
+         └── yg
+             └── bootcamp
+                 └── demo
+                     ├── controller
+                     │   ├── BudgetControllerTest.java
+                     │   ├── ExpenseControllerTest.java
+                     │   └── UserControllerTest.java
+                     ├── service
+                     │   ├── BudgetServiceTest.java
+                     │   ├── ExpenseServiceTest.java
+                     │   └── UserServiceTest.java
+                     ├── repository
+                     │   ├── BudgetRepositoryTest.java
+                     │   ├── ExpenseRepositoryTest.java
+                     │   └── UserRepositoryTest.java
+                     └── integration
+                         └── ApplicationIntegrationTest.java
+```
+
+### **Unit Test Cases**:
+#### 1. **Service Layer Unit Tests (ExpenseServiceTest.java example)**
+
+```java
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.mockito.InjectMocks;
+import org.mockito.Mock;
+import org.mockito.MockitoAnnotations;
+import yg.bootcamp.demo.repository.ExpenseRepository;
+import yg.bootcamp.demo.service.ExpenseService;
+import yg.bootcamp.demo.dto.ExpenseDto;
+import yg.bootcamp.demo.model.Expense;
+
+import java.sql.Date;
+import java.util.Optional;
+
+import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.Mockito.*;
+
+public class ExpenseServiceTest {
+
+    @Mock
+    private ExpenseRepository expenseRepository;
+
+    @InjectMocks
+    private ExpenseService expenseService;
+
+    private Expense expense;
+
+    @BeforeEach
+    public void setUp() {
+        MockitoAnnotations.initMocks(this);
+        expense = new Expense();
+        expense.setExpenseId(1);
+        expense.setExpenseAmount(100);
+        expense.setCategory("Food");
+        expense.setDescription("Lunch");
+        expense.setExpenseDate(Date.valueOf("2024-10-01"));
+    }
+
+    @Test
+    public void testGetExpenseById() {
+        when(expenseRepository.findById(1)).thenReturn(Optional.of(expense));
+        ExpenseDto expenseDto = expenseService.getExpenseById(1);
+
+        assertNotNull(expenseDto);
+        assertEquals(1, expenseDto.getExpenseId());
+    }
+
+    @Test
+    public void testCreateExpense() {
+        when(expenseRepository.save(any(Expense.class))).thenReturn(expense);
+        ExpenseDto createdExpense = expenseService.createExpense(new ExpenseDto());
+
+        assertNotNull(createdExpense);
+        assertEquals("Food", createdExpense.getCategory());
+        verify(expenseRepository, times(1)).save(any(Expense.class));
+    }
+
+    @Test
+    public void testUpdateExpense() {
+        when(expenseRepository.findById(1)).thenReturn(Optional.of(expense));
+        when(expenseRepository.save(any(Expense.class))).thenReturn(expense);
+
+        ExpenseDto updatedExpense = expenseService.updateExpense(1, new ExpenseDto());
+
+        assertNotNull(updatedExpense);
+        assertEquals("Lunch", updatedExpense.getDescription());
+    }
+
+    @Test
+    public void testDeleteExpense() {
+        doNothing().when(expenseRepository).deleteById(1);
+        expenseService.deleteExpense(1);
+        verify(expenseRepository, times(1)).deleteById(1);
+    }
+}
+```
+
+You can write similar tests for `UserServiceTest.java` and `BudgetServiceTest.java`.
+
+#### 2. **Controller Layer Unit Tests (ExpenseControllerTest.java example)**
+
+```java
+import com.fasterxml.jackson.databind.ObjectMapper;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.mockito.InjectMocks;
+import org.mockito.Mock;
+import org.mockito.MockitoAnnotations;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
+import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.http.MediaType;
+import org.springframework.test.web.servlet.MockMvc;
+import yg.bootcamp.demo.controller.ExpenseController;
+import yg.bootcamp.demo.dto.ExpenseDto;
+import yg.bootcamp.demo.service.ExpenseService;
+
+import java.sql.Date;
+import java.util.Arrays;
+
+import static org.mockito.Mockito.*;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
+
+@SpringBootTest
+@AutoConfigureMockMvc
+public class ExpenseControllerTest {
+
+    @Autowired
+    private MockMvc mockMvc;
+
+    @Mock
+    private ExpenseService expenseService;
+
+    @InjectMocks
+    private ExpenseController expenseController;
+
+    @BeforeEach
+    public void setUp() {
+        MockitoAnnotations.initMocks(this);
+    }
+
+    @Test
+    public void testGetExpenseById() throws Exception {
+        ExpenseDto expenseDto = new ExpenseDto(1, 100, "Food", "Lunch", Date.valueOf("2024-10-01"));
+
+        when(expenseService.getExpenseById(1)).thenReturn(expenseDto);
+
+        mockMvc.perform(get("/api/expenses/1"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.expenseId").value(1))
+                .andExpect(jsonPath("$.category").value("Food"));
+    }
+
+    @Test
+    public void testCreateExpense() throws Exception {
+        ExpenseDto expenseDto = new ExpenseDto(1, 100, "Food", "Lunch", Date.valueOf("2024-10-01"));
+
+        when(expenseService.createExpense(any(ExpenseDto.class))).thenReturn(expenseDto);
+
+        mockMvc.perform(post("/api/expenses")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(new ObjectMapper().writeValueAsString(expenseDto)))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.category").value("Food"));
+    }
+
+    @Test
+    public void testUpdateExpense() throws Exception {
+        ExpenseDto expenseDto = new ExpenseDto(1, 200, "Transport", "Bus fare", Date.valueOf("2024-10-02"));
+
+        when(expenseService.updateExpense(anyInt(), any(ExpenseDto.class))).thenReturn(expenseDto);
+
+        mockMvc.perform(put("/api/expenses/1")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(new ObjectMapper().writeValueAsString(expenseDto)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.category").value("Transport"));
+    }
+
+    @Test
+    public void testDeleteExpense() throws Exception {
+        doNothing().when(expenseService).deleteExpense(1);
+
+        mockMvc.perform(delete("/api/expenses/1"))
+                .andExpect(status().isOk())
+                .andExpect(content().string("Expense successfully deleted!"));
+    }
+}
+```
+
+You can write similar controller tests for `UserControllerTest.java` and `BudgetControllerTest.java`.
+
+### **End-to-End (E2E) Integration Test:**
+
+An integration test for the entire application will simulate real scenarios of data flow across controllers, services, and repositories.
+
+#### **Integration Test (ApplicationIntegrationTest.java)**
+
+```java
+import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
+import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.http.MediaType;
+import org.springframework.test.web.servlet.MockMvc;
+import yg.bootcamp.demo.dto.ExpenseDto;
+import com.fasterxml.jackson.databind.ObjectMapper;
+
+import java.sql.Date;
+
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
+
+@SpringBootTest
+@AutoConfigureMockMvc
+public class ApplicationIntegrationTest {
+
+    @Autowired
+    private MockMvc mockMvc;
+
+    @Test
+    public void testCreateAndGetExpense() throws Exception {
+        // Create an expense
+        ExpenseDto expenseDto = new ExpenseDto(null, 100, "Food", "Lunch", Date.valueOf("2024-10-01"));
+
+        String expenseJson = new ObjectMapper().writeValueAsString(expenseDto);
+
+        mockMvc.perform(post("/api/expenses")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(expenseJson))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.category").value("Food"));
+
+        // Get the created expense by ID
+        mockMvc.perform(get("/api/expenses/1"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.expenseId").value(1))
+                .andExpect(jsonPath("$.category").value("Food"));
+    }
+
+    @Test
+    public void testCreateAndGetUser
+
+() throws Exception {
+        // Similar process for User and Budget
+    }
+}
+```
+
+### **Summary**:
+- The test structure includes separate tests for `controller`, `service`, and `repository`.
+- Unit tests for service and controller layers are focused on mocking dependencies.
+- Integration tests simulate actual HTTP requests to your application to test how controllers and services work together.
+
+
+
+
+
+
+
+
+
+
+Let's extend your project by writing **unit test cases** and **end-to-end integration tests** for both the **`User`** and **`Budget`** models. These follow the same pattern as the `Expense` tests.
+
+---
+
+### **UserServiceTest.java**
+Unit tests for the **User** service layer:
+
+```java
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.mockito.InjectMocks;
+import org.mockito.Mock;
+import org.mockito.MockitoAnnotations;
+import yg.bootcamp.demo.model.User;
+import yg.bootcamp.demo.dto.UserDto;
+import yg.bootcamp.demo.repository.UserRepository;
+import yg.bootcamp.demo.service.UserService;
+
+import java.util.Optional;
+
+import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.Mockito.*;
+
+public class UserServiceTest {
+
+    @Mock
+    private UserRepository userRepository;
+
+    @InjectMocks
+    private UserService userService;
+
+    private User user;
+
+    @BeforeEach
+    public void setUp() {
+        MockitoAnnotations.initMocks(this);
+        user = new User();
+        user.setUserId(1);
+        user.setUserName("John Doe");
+        user.setEmail("john@example.com");
+    }
+
+    @Test
+    public void testGetUserById() {
+        when(userRepository.findById(1)).thenReturn(Optional.of(user));
+        UserDto userDto = userService.getUserById(1);
+
+        assertNotNull(userDto);
+        assertEquals(1, userDto.getUserId());
+        assertEquals("John Doe", userDto.getUserName());
+    }
+
+    @Test
+    public void testCreateUser() {
+        when(userRepository.save(any(User.class))).thenReturn(user);
+        UserDto createdUser = userService.createUser(new UserDto());
+
+        assertNotNull(createdUser);
+        assertEquals("John Doe", createdUser.getUserName());
+        verify(userRepository, times(1)).save(any(User.class));
+    }
+
+    @Test
+    public void testUpdateUser() {
+        when(userRepository.findById(1)).thenReturn(Optional.of(user));
+        when(userRepository.save(any(User.class))).thenReturn(user);
+
+        UserDto updatedUser = userService.updateUser(1, new UserDto());
+
+        assertNotNull(updatedUser);
+        assertEquals("john@example.com", updatedUser.getEmail());
+    }
+
+    @Test
+    public void testDeleteUser() {
+        doNothing().when(userRepository).deleteById(1);
+        userService.deleteUser(1);
+        verify(userRepository, times(1)).deleteById(1);
+    }
+}
+```
+
+---
+
+### **UserControllerTest.java**
+Unit tests for the **User** controller layer:
+
+```java
+import com.fasterxml.jackson.databind.ObjectMapper;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.mockito.InjectMocks;
+import org.mockito.Mock;
+import org.mockito.MockitoAnnotations;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
+import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.http.MediaType;
+import org.springframework.test.web.servlet.MockMvc;
+import yg.bootcamp.demo.controller.UserController;
+import yg.bootcamp.demo.dto.UserDto;
+import yg.bootcamp.demo.service.UserService;
+
+import static org.mockito.Mockito.*;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
+
+@SpringBootTest
+@AutoConfigureMockMvc
+public class UserControllerTest {
+
+    @Autowired
+    private MockMvc mockMvc;
+
+    @Mock
+    private UserService userService;
+
+    @InjectMocks
+    private UserController userController;
+
+    @BeforeEach
+    public void setUp() {
+        MockitoAnnotations.initMocks(this);
+    }
+
+    @Test
+    public void testGetUserById() throws Exception {
+        UserDto userDto = new UserDto(1, "John Doe", "john@example.com");
+
+        when(userService.getUserById(1)).thenReturn(userDto);
+
+        mockMvc.perform(get("/api/users/1"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.userId").value(1))
+                .andExpect(jsonPath("$.userName").value("John Doe"));
+    }
+
+    @Test
+    public void testCreateUser() throws Exception {
+        UserDto userDto = new UserDto(1, "John Doe", "john@example.com");
+
+        when(userService.createUser(any(UserDto.class))).thenReturn(userDto);
+
+        mockMvc.perform(post("/api/users")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(new ObjectMapper().writeValueAsString(userDto)))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.userName").value("John Doe"));
+    }
+
+    @Test
+    public void testUpdateUser() throws Exception {
+        UserDto userDto = new UserDto(1, "John Doe", "john@example.com");
+
+        when(userService.updateUser(anyInt(), any(UserDto.class))).thenReturn(userDto);
+
+        mockMvc.perform(put("/api/users/1")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(new ObjectMapper().writeValueAsString(userDto)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.email").value("john@example.com"));
+    }
+
+    @Test
+    public void testDeleteUser() throws Exception {
+        doNothing().when(userService).deleteUser(1);
+
+        mockMvc.perform(delete("/api/users/1"))
+                .andExpect(status().isOk())
+                .andExpect(content().string("User successfully deleted!"));
+    }
+}
+```
+
+---
+
+### **BudgetServiceTest.java**
+Unit tests for the **Budget** service layer:
+
+```java
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.mockito.InjectMocks;
+import org.mockito.Mock;
+import org.mockito.MockitoAnnotations;
+import yg.bootcamp.demo.model.Budget;
+import yg.bootcamp.demo.dto.BudgetDto;
+import yg.bootcamp.demo.repository.BudgetRepository;
+import yg.bootcamp.demo.service.BudgetService;
+
+import java.sql.Date;
+import java.util.Optional;
+
+import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.Mockito.*;
+
+public class BudgetServiceTest {
+
+    @Mock
+    private BudgetRepository budgetRepository;
+
+    @InjectMocks
+    private BudgetService budgetService;
+
+    private Budget budget;
+
+    @BeforeEach
+    public void setUp() {
+        MockitoAnnotations.initMocks(this);
+        budget = new Budget();
+        budget.setBudgetId(1);
+        budget.setBudgetName("Travel");
+        budget.setBudgetAmount(500);
+        budget.setStartDate(Date.valueOf("2024-10-01"));
+        budget.setEndDate(Date.valueOf("2024-10-31"));
+    }
+
+    @Test
+    public void testGetBudgetById() {
+        when(budgetRepository.findById(1)).thenReturn(Optional.of(budget));
+        BudgetDto budgetDto = budgetService.getBudgetById(1);
+
+        assertNotNull(budgetDto);
+        assertEquals(1, budgetDto.getBudgetId());
+        assertEquals("Travel", budgetDto.getBudgetName());
+    }
+
+    @Test
+    public void testCreateBudget() {
+        when(budgetRepository.save(any(Budget.class))).thenReturn(budget);
+        BudgetDto createdBudget = budgetService.createBudget(new BudgetDto());
+
+        assertNotNull(createdBudget);
+        assertEquals("Travel", createdBudget.getBudgetName());
+        verify(budgetRepository, times(1)).save(any(Budget.class));
+    }
+
+    @Test
+    public void testUpdateBudget() {
+        when(budgetRepository.findById(1)).thenReturn(Optional.of(budget));
+        when(budgetRepository.save(any(Budget.class))).thenReturn(budget);
+
+        BudgetDto updatedBudget = budgetService.updateBudget(1, new BudgetDto());
+
+        assertNotNull(updatedBudget);
+        assertEquals("Travel", updatedBudget.getBudgetName());
+    }
+
+    @Test
+    public void testDeleteBudget() {
+        doNothing().when(budgetRepository).deleteById(1);
+        budgetService.deleteBudget(1);
+        verify(budgetRepository, times(1)).deleteById(1);
+    }
+}
+```
+
+---
+
+### **BudgetControllerTest.java**
+Unit tests for the **Budget** controller layer:
+
+```java
+import com.fasterxml.jackson.databind.ObjectMapper;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.mockito.InjectMocks;
+import org.mockito.Mock;
+import org.mockito.MockitoAnnotations;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
+import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.http.MediaType;
+import org.springframework.test.web.servlet.MockMvc;
+import yg.bootcamp.demo.controller.BudgetController;
+import yg.bootcamp.demo.dto.BudgetDto;
+import yg.bootcamp.demo.service.BudgetService;
+
+import java.sql.Date;
+
+import static org.mockito.Mockito.*;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
+
+@SpringBootTest
+@AutoConfigureMockMvc
+public class BudgetControllerTest {
+
+    @Autowired
+    private MockMvc mockMvc;
+
+    @Mock
+    private BudgetService budgetService;
+
+    @InjectMocks
+    private BudgetController budgetController;
+
+    @BeforeEach
+    public void setUp() {
+        MockitoAnnotations.initMocks(this);
+    }
+
+    @Test
+    public void testGetBudgetById() throws Exception {
+        BudgetDto budgetDto = new BudgetDto(1, "Travel", "For Vacation", 500, Date.valueOf("2024-10-01"), Date.valueOf("2024-10-31"));
+
+        when(budgetService.getBudgetById(1)).thenReturn(budgetDto);
+
+        mockMvc.perform(get("/api/budgets/1"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.budget
+
+Id").value(1))
+                .andExpect(jsonPath("$.budgetName").value("Travel"));
+    }
+
+    @Test
+    public void testCreateBudget() throws Exception {
+        BudgetDto budgetDto = new BudgetDto(1, "Travel", "For Vacation", 500, Date.valueOf("2024-10-01"), Date.valueOf("2024-10-31"));
+
+        when(budgetService.createBudget(any(BudgetDto.class))).thenReturn(budgetDto);
+
+        mockMvc.perform(post("/api/budgets")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(new ObjectMapper().writeValueAsString(budgetDto)))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.budgetName").value("Travel"));
+    }
+
+    @Test
+    public void testUpdateBudget() throws Exception {
+        BudgetDto budgetDto = new BudgetDto(1, "Travel", "For Vacation", 500, Date.valueOf("2024-10-01"), Date.valueOf("2024-10-31"));
+
+        when(budgetService.updateBudget(anyInt(), any(BudgetDto.class))).thenReturn(budgetDto);
+
+        mockMvc.perform(put("/api/budgets/1")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(new ObjectMapper().writeValueAsString(budgetDto)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.budgetName").value("Travel"));
+    }
+
+    @Test
+    public void testDeleteBudget() throws Exception {
+        doNothing().when(budgetService).deleteBudget(1);
+
+        mockMvc.perform(delete("/api/budgets/1"))
+                .andExpect(status().isOk())
+                .andExpect(content().string("Budget successfully deleted!"));
+    }
+}
+```
+
+---
+
+With this, you have:
+- **Unit tests** for both `User` and `Budget` models.
+- **Controller tests** for simulating the REST APIs.
+
+This should cover basic functionality and ensure proper behavior across service, repository, and controller layers.
