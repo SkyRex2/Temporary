@@ -1,0 +1,311 @@
+Here’s a detailed README for your **Financial Management Application** project:
+
+---
+
+# Financial Management Application
+
+This application helps users manage their finances by tracking expenses and creating budgets. It allows users to add, view, update, and delete expense and budget records, as well as search and filter results based on various fields. The project is built using **Spring Boot** for the backend and **Angular 17** for the frontend.
+
+## Table of Contents
+
+1. [Tech Stack](#tech-stack)
+2. [Features](#features)
+3. [Backend Structure](#backend-structure)
+4. [Database Configuration](#database-configuration)
+5. [API Endpoints](#api-endpoints)
+6. [Testing](#testing)
+7. [Running the Application](#running-the-application)
+8. [Project Directory Structure](#project-directory-structure)
+9. [Future Improvements](#future-improvements)
+
+---
+
+## Tech Stack
+
+### Backend:
+- **Spring Boot** (REST API)
+- **PostgreSQL** (Database)
+- **JUnit 5** (Testing)
+
+### Frontend:
+- **Angular 17**
+- **TypeScript**
+
+---
+
+## Features
+
+### Expense Management:
+- Add new expenses
+- View all expenses
+- Update expenses
+- Delete expenses
+- Search expenses by fields like date, category, or ID
+
+### Budget Management:
+- Add new budgets
+- View all budgets
+- Update budgets
+- Delete budgets
+- Check if the total expenses exceed the budget
+
+### Additional:
+- User-friendly interface with sidebar navigation
+- Filter and search functionality for both expenses and budgets
+
+---
+
+## Backend Structure
+
+The backend is built using **Spring Boot** and follows the **MVC (Model-View-Controller)** architecture pattern. Here’s an overview of the different components:
+
+### 1. **Models**:
+The `Expense` and `Budget` models define the entities used in the application.
+
+- **Expense Model**:
+  ```java
+  @Entity
+  public class Expense {
+      @Id
+      @GeneratedValue(strategy = GenerationType.IDENTITY)
+      private Integer expenseId;
+      private Integer expenseAmount;
+      private String category;
+      private String description;
+      private Date expenseDate;
+      // Getters and setters...
+  }
+  ```
+
+- **Budget Model**:
+  ```java
+  @Entity
+  public class Budget {
+      @Id
+      @GeneratedValue(strategy = GenerationType.IDENTITY)
+      private Integer budgetId;
+      private String budgetName;
+      private String budgetDescription;
+      private Integer budgetAmount;
+      private Date startDate;
+      private Date endDate;
+      // Getters and setters...
+  }
+  ```
+
+### 2. **Repositories**:
+- These interfaces extend `JpaRepository` to handle CRUD operations with the database automatically.
+  - `ExpenseRepository`
+  - `BudgetRepository`
+
+### 3. **Services**:
+The services handle business logic, and they interact with the repositories to perform actions on the database.
+
+Example: `ExpenseService`
+```java
+@Service
+public class ExpenseService {
+    @Autowired
+    private ExpenseRepository expenseRepository;
+
+    public List<Expense> getAllExpenses() {
+        return expenseRepository.findAll();
+    }
+
+    public Expense getExpenseById(Integer id) {
+        return expenseRepository.findById(id).orElseThrow(() -> new ResourceNotFoundException("Expense not found"));
+    }
+
+    public Expense addExpense(Expense expense) {
+        return expenseRepository.save(expense);
+    }
+
+    public Expense updateExpense(Integer id, Expense expenseDetails) {
+        Expense expense = getExpenseById(id);
+        expense.setExpenseAmount(expenseDetails.getExpenseAmount());
+        expense.setCategory(expenseDetails.getCategory());
+        expense.setDescription(expenseDetails.getDescription());
+        expense.setExpenseDate(expenseDetails.getExpenseDate());
+        return expenseRepository.save(expense);
+    }
+
+    public void deleteExpense(Integer id) {
+        expenseRepository.deleteById(id);
+    }
+}
+```
+
+### 4. **Controllers**:
+Controllers handle the incoming HTTP requests and map them to the appropriate services. They use **RESTful endpoints** to provide the API for the frontend.
+
+Example: `ExpenseController`
+```java
+@RestController
+@RequestMapping("/api/expenses")
+public class ExpenseController {
+    @Autowired
+    private ExpenseService expenseService;
+
+    @GetMapping
+    public List<Expense> getAllExpenses() {
+        return expenseService.getAllExpenses();
+    }
+
+    @GetMapping("/{id}")
+    public Expense getExpenseById(@PathVariable Integer id) {
+        return expenseService.getExpenseById(id);
+    }
+
+    @PostMapping
+    public Expense addExpense(@RequestBody Expense expense) {
+        return expenseService.addExpense(expense);
+    }
+
+    @PutMapping("/{id}")
+    public Expense updateExpense(@PathVariable Integer id, @RequestBody Expense expenseDetails) {
+        return expenseService.updateExpense(id, expenseDetails);
+    }
+
+    @DeleteMapping("/{id}")
+    public void deleteExpense(@PathVariable Integer id) {
+        expenseService.deleteExpense(id);
+    }
+}
+```
+
+### Annotations Overview:
+- `@Entity`: Marks the class as a JPA entity to be mapped to the database.
+- `@Id`: Identifies the primary key of the entity.
+- `@GeneratedValue`: Specifies the strategy for generating the primary key value.
+- `@Service`: Marks the class as a service layer component.
+- `@RestController`: Combines `@Controller` and `@ResponseBody` for RESTful web services.
+- `@RequestMapping`: Maps HTTP requests to handler methods.
+- `@GetMapping`, `@PostMapping`, `@PutMapping`, `@DeleteMapping`: Handle specific HTTP methods.
+- `@Autowired`: Injects dependencies automatically.
+
+---
+
+## Database Configuration
+
+The application uses **PostgreSQL** as the database. You need to configure the database connection in the `application.properties` file.
+
+Example `application.properties` configuration:
+```properties
+spring.datasource.url=jdbc:postgresql://localhost:5432/financial_management
+spring.datasource.username=your_username
+spring.datasource.password=your_password
+spring.jpa.hibernate.ddl-auto=update
+spring.jpa.properties.hibernate.dialect=org.hibernate.dialect.PostgreSQLDialect
+```
+
+Make sure to replace `your_username` and `your_password` with your actual database credentials.
+
+---
+
+## API Endpoints
+
+### Expense Endpoints:
+- `GET /api/expenses` - Get all expenses
+- `GET /api/expenses/{id}` - Get a specific expense by ID
+- `POST /api/expenses` - Add a new expense
+- `PUT /api/expenses/{id}` - Update an existing expense
+- `DELETE /api/expenses/{id}` - Delete an expense
+
+### Budget Endpoints:
+- `GET /api/budgets` - Get all budgets
+- `GET /api/budgets/{id}` - Get a specific budget by ID
+- `POST /api/budgets` - Add a new budget
+- `PUT /api/budgets/{id}` - Update an existing budget
+- `DELETE /api/budgets/{id}` - Delete a budget
+- `POST /api/budgets/check` - Check if total expenses exceed the budget
+
+---
+
+## Testing
+
+The application uses **JUnit 5** for unit testing. The test cases are located in the `src/test/java` directory.
+
+Example test case for `ExpenseService`:
+```java
+@SpringBootTest
+public class ExpenseServiceTest {
+
+    @Autowired
+    private ExpenseService expenseService;
+
+    @Test
+    public void testAddExpense() {
+        Expense expense = new Expense();
+        expense.setExpenseAmount(100);
+        expense.setCategory("Food");
+        Expense savedExpense = expenseService.addExpense(expense);
+        assertNotNull(savedExpense);
+        assertEquals(100, savedExpense.getExpenseAmount());
+    }
+
+    // Additional test cases...
+}
+```
+
+To run the tests, use the following command:
+```bash
+mvn test
+```
+
+---
+
+## Running the Application
+
+1. **Clone the repository**:
+   ```bash
+   git clone https://github.com/your-repo/financial-management.git
+   ```
+2. **Navigate to the backend directory**:
+   ```bash
+   cd financial-management/backend
+   ```
+3. **Build and run the application**:
+   ```bash
+   mvn spring-boot:run
+   ```
+
+Make sure PostgreSQL is running and the database is correctly set up.
+
+---
+
+## Project Directory Structure
+
+```
+financial-management
+│
+├── backend
+│   ├── src
+│   │   ├── main
+│   │   │   ├── java/com/example/financialmanagement
+│   │   │   │   ├── controllers
+│   │   │   │   ├── models
+│   │   │   │   ├── repositories
+│   │   │   │   ├── services
+│   │   │   └── resources
+│   │   │       ├── application.properties
+│   ├── test
+│       └── java/com/example/financialmanagement
+│           ├── controllers
+│           ├── services
+│
+└── frontend
+    └── (Angular project directory)
+```
+
+---
+
+## Future Improvements
+
+- Add authentication and authorization (e.g., JWT tokens)
+- Implement email notifications for budget overruns
+- Enhance the user interface with additional filters and sorting options
+- Add multi-user support for personalized expense management
+
+---
+
+Feel free to modify and enhance this README as the project progresses!
