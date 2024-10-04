@@ -1,0 +1,2050 @@
+For your project that includes `Expense`, `Budget`, and `User` in one application, here’s a suggested file structure for unit tests and end-to-end (E2E) tests.
+
+### **File Structure**:
+```
+src
+ ├── main
+ │   └── java
+ │       └── yg
+ │           └── bootcamp
+ │               └── demo
+ │                   ├── controller
+ │                   │   ├── BudgetController.java
+ │                   │   ├── ExpenseController.java
+ │                   │   └── UserController.java
+ │                   ├── model
+ │                   │   ├── Budget.java
+ │                   │   ├── Expense.java
+ │                   │   └── User.java
+ │                   ├── repository
+ │                   │   ├── BudgetRepository.java
+ │                   │   ├── ExpenseRepository.java
+ │                   │   └── UserRepository.java
+ │                   ├── service
+ │                   │   ├── BudgetService.java
+ │                   │   ├── ExpenseService.java
+ │                   │   └── UserService.java
+ │                   └── dto
+ │                       ├── BudgetDto.java
+ │                       ├── ExpenseDto.java
+ │                       └── UserDto.java
+ └── test
+     └── java
+         └── yg
+             └── bootcamp
+                 └── demo
+                     ├── controller
+                     │   ├── BudgetControllerTest.java
+                     │   ├── ExpenseControllerTest.java
+                     │   └── UserControllerTest.java
+                     ├── service
+                     │   ├── BudgetServiceTest.java
+                     │   ├── ExpenseServiceTest.java
+                     │   └── UserServiceTest.java
+                     ├── repository
+                     │   ├── BudgetRepositoryTest.java
+                     │   ├── ExpenseRepositoryTest.java
+                     │   └── UserRepositoryTest.java
+                     └── integration
+                         └── ApplicationIntegrationTest.java
+```
+
+### **Unit Test Cases**:
+#### 1. **Service Layer Unit Tests (ExpenseServiceTest.java example)**
+
+```java
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.mockito.InjectMocks;
+import org.mockito.Mock;
+import org.mockito.MockitoAnnotations;
+import yg.bootcamp.demo.repository.ExpenseRepository;
+import yg.bootcamp.demo.service.ExpenseService;
+import yg.bootcamp.demo.dto.ExpenseDto;
+import yg.bootcamp.demo.model.Expense;
+
+import java.sql.Date;
+import java.util.Optional;
+
+import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.Mockito.*;
+
+public class ExpenseServiceTest {
+
+    @Mock
+    private ExpenseRepository expenseRepository;
+
+    @InjectMocks
+    private ExpenseService expenseService;
+
+    private Expense expense;
+
+    @BeforeEach
+    public void setUp() {
+        MockitoAnnotations.initMocks(this);
+        expense = new Expense();
+        expense.setExpenseId(1);
+        expense.setExpenseAmount(100);
+        expense.setCategory("Food");
+        expense.setDescription("Lunch");
+        expense.setExpenseDate(Date.valueOf("2024-10-01"));
+    }
+
+    @Test
+    public void testGetExpenseById() {
+        when(expenseRepository.findById(1)).thenReturn(Optional.of(expense));
+        ExpenseDto expenseDto = expenseService.getExpenseById(1);
+
+        assertNotNull(expenseDto);
+        assertEquals(1, expenseDto.getExpenseId());
+    }
+
+    @Test
+    public void testCreateExpense() {
+        when(expenseRepository.save(any(Expense.class))).thenReturn(expense);
+        ExpenseDto createdExpense = expenseService.createExpense(new ExpenseDto());
+
+        assertNotNull(createdExpense);
+        assertEquals("Food", createdExpense.getCategory());
+        verify(expenseRepository, times(1)).save(any(Expense.class));
+    }
+
+    @Test
+    public void testUpdateExpense() {
+        when(expenseRepository.findById(1)).thenReturn(Optional.of(expense));
+        when(expenseRepository.save(any(Expense.class))).thenReturn(expense);
+
+        ExpenseDto updatedExpense = expenseService.updateExpense(1, new ExpenseDto());
+
+        assertNotNull(updatedExpense);
+        assertEquals("Lunch", updatedExpense.getDescription());
+    }
+
+    @Test
+    public void testDeleteExpense() {
+        doNothing().when(expenseRepository).deleteById(1);
+        expenseService.deleteExpense(1);
+        verify(expenseRepository, times(1)).deleteById(1);
+    }
+}
+```
+
+You can write similar tests for `UserServiceTest.java` and `BudgetServiceTest.java`.
+
+#### 2. **Controller Layer Unit Tests (ExpenseControllerTest.java example)**
+
+```java
+import com.fasterxml.jackson.databind.ObjectMapper;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.mockito.InjectMocks;
+import org.mockito.Mock;
+import org.mockito.MockitoAnnotations;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
+import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.http.MediaType;
+import org.springframework.test.web.servlet.MockMvc;
+import yg.bootcamp.demo.controller.ExpenseController;
+import yg.bootcamp.demo.dto.ExpenseDto;
+import yg.bootcamp.demo.service.ExpenseService;
+
+import java.sql.Date;
+import java.util.Arrays;
+
+import static org.mockito.Mockito.*;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
+
+@SpringBootTest
+@AutoConfigureMockMvc
+public class ExpenseControllerTest {
+
+    @Autowired
+    private MockMvc mockMvc;
+
+    @Mock
+    private ExpenseService expenseService;
+
+    @InjectMocks
+    private ExpenseController expenseController;
+
+    @BeforeEach
+    public void setUp() {
+        MockitoAnnotations.initMocks(this);
+    }
+
+    @Test
+    public void testGetExpenseById() throws Exception {
+        ExpenseDto expenseDto = new ExpenseDto(1, 100, "Food", "Lunch", Date.valueOf("2024-10-01"));
+
+        when(expenseService.getExpenseById(1)).thenReturn(expenseDto);
+
+        mockMvc.perform(get("/api/expenses/1"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.expenseId").value(1))
+                .andExpect(jsonPath("$.category").value("Food"));
+    }
+
+    @Test
+    public void testCreateExpense() throws Exception {
+        ExpenseDto expenseDto = new ExpenseDto(1, 100, "Food", "Lunch", Date.valueOf("2024-10-01"));
+
+        when(expenseService.createExpense(any(ExpenseDto.class))).thenReturn(expenseDto);
+
+        mockMvc.perform(post("/api/expenses")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(new ObjectMapper().writeValueAsString(expenseDto)))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.category").value("Food"));
+    }
+
+    @Test
+    public void testUpdateExpense() throws Exception {
+        ExpenseDto expenseDto = new ExpenseDto(1, 200, "Transport", "Bus fare", Date.valueOf("2024-10-02"));
+
+        when(expenseService.updateExpense(anyInt(), any(ExpenseDto.class))).thenReturn(expenseDto);
+
+        mockMvc.perform(put("/api/expenses/1")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(new ObjectMapper().writeValueAsString(expenseDto)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.category").value("Transport"));
+    }
+
+    @Test
+    public void testDeleteExpense() throws Exception {
+        doNothing().when(expenseService).deleteExpense(1);
+
+        mockMvc.perform(delete("/api/expenses/1"))
+                .andExpect(status().isOk())
+                .andExpect(content().string("Expense successfully deleted!"));
+    }
+}
+```
+
+You can write similar controller tests for `UserControllerTest.java` and `BudgetControllerTest.java`.
+
+### **End-to-End (E2E) Integration Test:**
+
+An integration test for the entire application will simulate real scenarios of data flow across controllers, services, and repositories.
+
+#### **Integration Test (ApplicationIntegrationTest.java)**
+
+```java
+import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
+import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.http.MediaType;
+import org.springframework.test.web.servlet.MockMvc;
+import yg.bootcamp.demo.dto.ExpenseDto;
+import com.fasterxml.jackson.databind.ObjectMapper;
+
+import java.sql.Date;
+
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
+
+@SpringBootTest
+@AutoConfigureMockMvc
+public class ApplicationIntegrationTest {
+
+    @Autowired
+    private MockMvc mockMvc;
+
+    @Test
+    public void testCreateAndGetExpense() throws Exception {
+        // Create an expense
+        ExpenseDto expenseDto = new ExpenseDto(null, 100, "Food", "Lunch", Date.valueOf("2024-10-01"));
+
+        String expenseJson = new ObjectMapper().writeValueAsString(expenseDto);
+
+        mockMvc.perform(post("/api/expenses")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(expenseJson))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.category").value("Food"));
+
+        // Get the created expense by ID
+        mockMvc.perform(get("/api/expenses/1"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.expenseId").value(1))
+                .andExpect(jsonPath("$.category").value("Food"));
+    }
+
+    @Test
+    public void testCreateAndGetUser
+
+() throws Exception {
+        // Similar process for User and Budget
+    }
+}
+```
+
+### **Summary**:
+- The test structure includes separate tests for `controller`, `service`, and `repository`.
+- Unit tests for service and controller layers are focused on mocking dependencies.
+- Integration tests simulate actual HTTP requests to your application to test how controllers and services work together.
+
+
+
+
+------------------------------------------------------------------------------------------------------------------------------------
+
+Let's extend your project by writing **unit test cases** and **end-to-end integration tests** for both the **`User`** and **`Budget`** models. These follow the same pattern as the `Expense` tests.
+
+---
+
+### **UserServiceTest.java**
+Unit tests for the **User** service layer:
+
+```java
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.mockito.InjectMocks;
+import org.mockito.Mock;
+import org.mockito.MockitoAnnotations;
+import yg.bootcamp.demo.model.User;
+import yg.bootcamp.demo.dto.UserDto;
+import yg.bootcamp.demo.repository.UserRepository;
+import yg.bootcamp.demo.service.UserService;
+
+import java.util.Optional;
+
+import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.Mockito.*;
+
+public class UserServiceTest {
+
+    @Mock
+    private UserRepository userRepository;
+
+    @InjectMocks
+    private UserService userService;
+
+    private User user;
+
+    @BeforeEach
+    public void setUp() {
+        MockitoAnnotations.initMocks(this);
+        user = new User();
+        user.setUserId(1);
+        user.setUserName("John Doe");
+        user.setEmail("john@example.com");
+    }
+
+    @Test
+    public void testGetUserById() {
+        when(userRepository.findById(1)).thenReturn(Optional.of(user));
+        UserDto userDto = userService.getUserById(1);
+
+        assertNotNull(userDto);
+        assertEquals(1, userDto.getUserId());
+        assertEquals("John Doe", userDto.getUserName());
+    }
+
+    @Test
+    public void testCreateUser() {
+        when(userRepository.save(any(User.class))).thenReturn(user);
+        UserDto createdUser = userService.createUser(new UserDto());
+
+        assertNotNull(createdUser);
+        assertEquals("John Doe", createdUser.getUserName());
+        verify(userRepository, times(1)).save(any(User.class));
+    }
+
+    @Test
+    public void testUpdateUser() {
+        when(userRepository.findById(1)).thenReturn(Optional.of(user));
+        when(userRepository.save(any(User.class))).thenReturn(user);
+
+        UserDto updatedUser = userService.updateUser(1, new UserDto());
+
+        assertNotNull(updatedUser);
+        assertEquals("john@example.com", updatedUser.getEmail());
+    }
+
+    @Test
+    public void testDeleteUser() {
+        doNothing().when(userRepository).deleteById(1);
+        userService.deleteUser(1);
+        verify(userRepository, times(1)).deleteById(1);
+    }
+}
+```
+
+---
+
+### **UserControllerTest.java**
+Unit tests for the **User** controller layer:
+
+```java
+import com.fasterxml.jackson.databind.ObjectMapper;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.mockito.InjectMocks;
+import org.mockito.Mock;
+import org.mockito.MockitoAnnotations;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
+import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.http.MediaType;
+import org.springframework.test.web.servlet.MockMvc;
+import yg.bootcamp.demo.controller.UserController;
+import yg.bootcamp.demo.dto.UserDto;
+import yg.bootcamp.demo.service.UserService;
+
+import static org.mockito.Mockito.*;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
+
+@SpringBootTest
+@AutoConfigureMockMvc
+public class UserControllerTest {
+
+    @Autowired
+    private MockMvc mockMvc;
+
+    @Mock
+    private UserService userService;
+
+    @InjectMocks
+    private UserController userController;
+
+    @BeforeEach
+    public void setUp() {
+        MockitoAnnotations.initMocks(this);
+    }
+
+    @Test
+    public void testGetUserById() throws Exception {
+        UserDto userDto = new UserDto(1, "John Doe", "john@example.com");
+
+        when(userService.getUserById(1)).thenReturn(userDto);
+
+        mockMvc.perform(get("/api/users/1"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.userId").value(1))
+                .andExpect(jsonPath("$.userName").value("John Doe"));
+    }
+
+    @Test
+    public void testCreateUser() throws Exception {
+        UserDto userDto = new UserDto(1, "John Doe", "john@example.com");
+
+        when(userService.createUser(any(UserDto.class))).thenReturn(userDto);
+
+        mockMvc.perform(post("/api/users")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(new ObjectMapper().writeValueAsString(userDto)))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.userName").value("John Doe"));
+    }
+
+    @Test
+    public void testUpdateUser() throws Exception {
+        UserDto userDto = new UserDto(1, "John Doe", "john@example.com");
+
+        when(userService.updateUser(anyInt(), any(UserDto.class))).thenReturn(userDto);
+
+        mockMvc.perform(put("/api/users/1")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(new ObjectMapper().writeValueAsString(userDto)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.email").value("john@example.com"));
+    }
+
+    @Test
+    public void testDeleteUser() throws Exception {
+        doNothing().when(userService).deleteUser(1);
+
+        mockMvc.perform(delete("/api/users/1"))
+                .andExpect(status().isOk())
+                .andExpect(content().string("User successfully deleted!"));
+    }
+}
+```
+
+---
+
+### **BudgetServiceTest.java**
+Unit tests for the **Budget** service layer:
+
+```java
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.mockito.InjectMocks;
+import org.mockito.Mock;
+import org.mockito.MockitoAnnotations;
+import yg.bootcamp.demo.model.Budget;
+import yg.bootcamp.demo.dto.BudgetDto;
+import yg.bootcamp.demo.repository.BudgetRepository;
+import yg.bootcamp.demo.service.BudgetService;
+
+import java.sql.Date;
+import java.util.Optional;
+
+import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.Mockito.*;
+
+public class BudgetServiceTest {
+
+    @Mock
+    private BudgetRepository budgetRepository;
+
+    @InjectMocks
+    private BudgetService budgetService;
+
+    private Budget budget;
+
+    @BeforeEach
+    public void setUp() {
+        MockitoAnnotations.initMocks(this);
+        budget = new Budget();
+        budget.setBudgetId(1);
+        budget.setBudgetName("Travel");
+        budget.setBudgetAmount(500);
+        budget.setStartDate(Date.valueOf("2024-10-01"));
+        budget.setEndDate(Date.valueOf("2024-10-31"));
+    }
+
+    @Test
+    public void testGetBudgetById() {
+        when(budgetRepository.findById(1)).thenReturn(Optional.of(budget));
+        BudgetDto budgetDto = budgetService.getBudgetById(1);
+
+        assertNotNull(budgetDto);
+        assertEquals(1, budgetDto.getBudgetId());
+        assertEquals("Travel", budgetDto.getBudgetName());
+    }
+
+    @Test
+    public void testCreateBudget() {
+        when(budgetRepository.save(any(Budget.class))).thenReturn(budget);
+        BudgetDto createdBudget = budgetService.createBudget(new BudgetDto());
+
+        assertNotNull(createdBudget);
+        assertEquals("Travel", createdBudget.getBudgetName());
+        verify(budgetRepository, times(1)).save(any(Budget.class));
+    }
+
+    @Test
+    public void testUpdateBudget() {
+        when(budgetRepository.findById(1)).thenReturn(Optional.of(budget));
+        when(budgetRepository.save(any(Budget.class))).thenReturn(budget);
+
+        BudgetDto updatedBudget = budgetService.updateBudget(1, new BudgetDto());
+
+        assertNotNull(updatedBudget);
+        assertEquals("Travel", updatedBudget.getBudgetName());
+    }
+
+    @Test
+    public void testDeleteBudget() {
+        doNothing().when(budgetRepository).deleteById(1);
+        budgetService.deleteBudget(1);
+        verify(budgetRepository, times(1)).deleteById(1);
+    }
+}
+```
+
+---
+
+### **BudgetControllerTest.java**
+Unit tests for the **Budget** controller layer:
+
+```java
+import com.fasterxml.jackson.databind.ObjectMapper;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.mockito.InjectMocks;
+import org.mockito.Mock;
+import org.mockito.MockitoAnnotations;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
+import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.http.MediaType;
+import org.springframework.test.web.servlet.MockMvc;
+import yg.bootcamp.demo.controller.BudgetController;
+import yg.bootcamp.demo.dto.BudgetDto;
+import yg.bootcamp.demo.service.BudgetService;
+
+import java.sql.Date;
+
+import static org.mockito.Mockito.*;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
+
+@SpringBootTest
+@AutoConfigureMockMvc
+public class BudgetControllerTest {
+
+    @Autowired
+    private MockMvc mockMvc;
+
+    @Mock
+    private BudgetService budgetService;
+
+    @InjectMocks
+    private BudgetController budgetController;
+
+    @BeforeEach
+    public void setUp() {
+        MockitoAnnotations.initMocks(this);
+    }
+
+    @Test
+    public void testGetBudgetById() throws Exception {
+        BudgetDto budgetDto = new BudgetDto(1, "Travel", "For Vacation", 500, Date.valueOf("2024-10-01"), Date.valueOf("2024-10-31"));
+
+        when(budgetService.getBudgetById(1)).thenReturn(budgetDto);
+
+        mockMvc.perform(get("/api/budgets/1"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.budget
+
+Id").value(1))
+                .andExpect(jsonPath("$.budgetName").value("Travel"));
+    }
+
+    @Test
+    public void testCreateBudget() throws Exception {
+        BudgetDto budgetDto = new BudgetDto(1, "Travel", "For Vacation", 500, Date.valueOf("2024-10-01"), Date.valueOf("2024-10-31"));
+
+        when(budgetService.createBudget(any(BudgetDto.class))).thenReturn(budgetDto);
+
+        mockMvc.perform(post("/api/budgets")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(new ObjectMapper().writeValueAsString(budgetDto)))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.budgetName").value("Travel"));
+    }
+
+    @Test
+    public void testUpdateBudget() throws Exception {
+        BudgetDto budgetDto = new BudgetDto(1, "Travel", "For Vacation", 500, Date.valueOf("2024-10-01"), Date.valueOf("2024-10-31"));
+
+        when(budgetService.updateBudget(anyInt(), any(BudgetDto.class))).thenReturn(budgetDto);
+
+        mockMvc.perform(put("/api/budgets/1")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(new ObjectMapper().writeValueAsString(budgetDto)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.budgetName").value("Travel"));
+    }
+
+    @Test
+    public void testDeleteBudget() throws Exception {
+        doNothing().when(budgetService).deleteBudget(1);
+
+        mockMvc.perform(delete("/api/budgets/1"))
+                .andExpect(status().isOk())
+                .andExpect(content().string("Budget successfully deleted!"));
+    }
+}
+```
+
+---
+
+With this, you have:
+- **Unit tests** for both `User` and `Budget` models.
+- **Controller tests** for simulating the REST APIs.
+
+This should cover basic functionality and ensure proper behavior across service, repository, and controller layers.
+
+
+------------------------------------------------------------------------------------------------------------------------------------
+
+
+Explain
+
+
+
+Let’s break down the testing part step by step, focusing on the annotations, structure, and logic involved in each test.
+
+### 1. **Unit Testing Overview**
+   - **Unit tests** are designed to test small, isolated pieces of functionality, typically at the method level. These tests focus on verifying that individual components (such as services or controllers) work as expected.
+   - In Spring Boot, we often use **JUnit 5** (Jupiter) for writing unit tests, combined with **Mockito** for mocking dependencies like services, repositories, or external APIs.
+
+### 2. **Annotations in Testing**
+#### JUnit 5 Annotations (Jupiter)
+1. **`@Test`**
+   - Marks a method as a test case. JUnit will run any method annotated with `@Test`.
+   - Example:
+     ```java
+     @Test
+     void testCreateExpense() {
+         // Test logic goes here
+     }
+     ```
+
+2. **`@BeforeEach`**
+   - This is executed **before each test method**. It’s often used to initialize or reset data that will be used by the test methods.
+   - Example:
+     ```java
+     @BeforeEach
+     void setup() {
+         // Initialize objects or mock data
+     }
+     ```
+
+3. **`@AfterEach`**
+   - This is executed **after each test method** to clean up any data or reset states.
+   - Example:
+     ```java
+     @AfterEach
+     void tearDown() {
+         // Clean up resources
+     }
+     ```
+
+4. **`@BeforeAll` / `@AfterAll`**
+   - These are executed **once before/after** all tests in the class. Typically used for expensive setup, like establishing database connections.
+   - Example:
+     ```java
+     @BeforeAll
+     static void init() {
+         // Run once before all tests
+     }
+     ```
+
+5. **`@DisplayName`**
+   - Allows you to set a custom display name for your test case, making it more readable.
+   - Example:
+     ```java
+     @Test
+     @DisplayName("Test case for creating an expense")
+     void testCreateExpense() {
+         // Test logic
+     }
+     ```
+
+#### Spring Boot Annotations (for testing)
+1. **`@SpringBootTest`**
+   - This annotation tells Spring Boot to **load the full application context** when running the test. It’s mostly used for **integration tests**, but in unit tests, it is less common (you’ll likely use `@WebMvcTest` or `@MockBean`).
+   - Example:
+     ```java
+     @SpringBootTest
+     public class ExpenseServiceTest {
+         // Test logic
+     }
+     ```
+
+2. **`@MockBean`**
+   - It is used to mock a Spring bean in the application context. When used, it replaces the actual bean with a mock in the Spring context for the test.
+   - Example:
+     ```java
+     @MockBean
+     private ExpenseRepository expenseRepository;
+     ```
+
+3. **`@Autowired`**
+   - Used to **inject** dependencies into a test class, like services, controllers, or repositories.
+   - Example:
+     ```java
+     @Autowired
+     private ExpenseService expenseService;
+     ```
+
+### 3. **Mocking and Assertions**
+#### Mocking with Mockito
+   - **Mockito** is a framework used to create mock objects and define behavior for them during testing.
+   - In the test files you’ve seen, **mocking** is often used for the repository layer, allowing us to simulate database operations without needing an actual database connection.
+
+1. **`@Mock`**
+   - Creates a **mock** object of a class or interface. This object will not have actual logic but will simulate behavior for testing purposes.
+   - Example:
+     ```java
+     @Mock
+     private ExpenseRepository expenseRepository;
+     ```
+
+2. **`when(...).thenReturn(...)`**
+   - This is used to define the **behavior of a mock**. You can simulate specific outputs based on input arguments.
+   - Example:
+     ```java
+     when(expenseRepository.findById(1)).thenReturn(Optional.of(mockExpense));
+     ```
+
+3. **`verify(...)`**
+   - Verifies whether a specific method was called on the mock object.
+   - Example:
+     ```java
+     verify(expenseRepository, times(1)).findById(1);
+     ```
+
+#### Assertions
+   - **Assertions** are used to check whether the actual output of a method matches the expected result.
+
+1. **`Assertions.assertEquals(expected, actual)`**
+   - Checks whether two values are equal.
+   - Example:
+     ```java
+     assertEquals(expectedExpense.getAmount(), actualExpense.getAmount());
+     ```
+
+2. **`Assertions.assertNotNull(object)`**
+   - Asserts that an object is not null.
+   - Example:
+     ```java
+     assertNotNull(expense);
+     ```
+
+3. **`Assertions.assertTrue(condition)`**
+   - Asserts that a condition is true.
+   - Example:
+     ```java
+     assertTrue(expenseList.size() > 0);
+     ```
+
+### 4. **Logic in Test Cases**
+Let’s break down the flow of a typical **unit test**:
+
+#### Example: `ExpenseServiceTest`
+```java
+@Test
+void testCreateExpense() {
+    // Arrange (Setup test data and mock behavior)
+    ExpenseDto expenseDto = new ExpenseDto(1, 100, "Food", "Lunch", new Date(System.currentTimeMillis()));
+    Expense expense = new Expense(1, 100, "Food", "Lunch", new Date(System.currentTimeMillis()));
+
+    when(expenseRepository.save(any(Expense.class))).thenReturn(expense);
+
+    // Act (Execute the method being tested)
+    ExpenseDto savedExpense = expenseService.addNewExpense(expenseDto, 1);
+
+    // Assert (Verify the output)
+    assertNotNull(savedExpense);
+    assertEquals(100, savedExpense.getExpenseAmount());
+    verify(expenseRepository, times(1)).save(any(Expense.class));
+}
+```
+
+- **Arrange**:
+  - Setup the test by creating the necessary objects and defining the mock behavior. In this case, we create `expenseDto` and mock the `expenseRepository.save()` method to return a specific `Expense`.
+  
+- **Act**:
+  - Call the actual method you want to test (`expenseService.addNewExpense()`).
+  
+- **Assert**:
+  - Verify that the results are as expected, using assertions like `assertNotNull` and `assertEquals`.
+  - Also, verify that the correct methods were called on mocks, such as `verify(expenseRepository).save()`.
+
+#### Example: `ExpenseControllerTest`
+```java
+@Test
+void testGetAllExpenses() throws Exception {
+    // Arrange
+    List<ExpenseDto> expenses = Arrays.asList(
+            new ExpenseDto(1, 100, "Food", "Lunch", new Date(System.currentTimeMillis())),
+            new ExpenseDto(2, 50, "Transport", "Bus ticket", new Date(System.currentTimeMillis()))
+    );
+    when(expenseService.getAllExpenses()).thenReturn(expenses);
+
+    // Act & Assert (Use MockMvc to test controller endpoints)
+    mockMvc.perform(get("/expense"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.size()").value(2))
+            .andExpect(jsonPath("$[0].expenseAmount").value(100));
+}
+```
+
+- **Arrange**:
+  - Mock the service layer (`expenseService.getAllExpenses()`), so when the controller calls it, we return a pre-defined list of expenses.
+  
+- **Act & Assert**:
+  - Use `MockMvc` to simulate the API call to `/expense`.
+  - Verify that the HTTP status is OK (`200`), and assert specific values in the JSON response using `jsonPath`.
+
+### 5. **File Structure**
+Here’s the typical file structure for the tests in your project:
+```
+src
+├── main
+│   └── java
+│       └── yg.bootcamp.demo
+│           ├── controller
+│           ├── dto
+│           ├── mapper
+│           ├── model
+│           ├── repository
+│           ├── service
+│           └── DemoApplication.java
+└── test
+    └── java
+        └── yg.bootcamp.demo
+            ├── controller
+            │   ├── ExpenseControllerTest.java
+            │   ├── UserControllerTest.java
+            │   └── BudgetControllerTest.java
+            ├── service
+            │   ├── ExpenseServiceTest.java
+            │   ├── UserServiceTest.java
+            │   └── BudgetServiceTest.java
+            └── AllTestsSuite.java
+```
+
+### 6. **Main Test Suite**
+The `AllTestsSuite.java` is the **test suite** that groups all your test classes together. It uses JUnit’s **suite** functionality to run all unit tests at once.
+
+```java
+import org.junit.platform.suite.api.SelectClasses;
+import org.junit.platform.suite.api.Suite;
+
+@Suite
+@SelectClasses({
+    ExpenseServiceTest.class,
+    ExpenseControllerTest.class,
+    UserServiceTest.class,
+    UserControllerTest.class,
+    BudgetServiceTest.class,
+    BudgetControllerTest.class
+})
+public class AllTestsSuite {
+}
+```
+
+- **@Suite**: Declares a test suite.
+- **@SelectClasses**: Specifies the classes to include in the suite.
+
+### Summary:
+1. **JUnit 5** annotations help in defining test cases and test lifecycle methods.
+2. **
+
+Mockito** is used to mock dependencies and define behaviors for services, repositories, etc.
+3. **Assertions** are used to validate the output of methods.
+4. The **test suite** helps run all test classes at once.
+5. Each test follows the **Arrange-Act-Assert** pattern:
+   - **Arrange**: Setup necessary data and mock behavior.
+   - **Act**: Call the method being tested.
+   - **Assert**: Verify the outcome using assertions.
+
+By ensuring each unit is tested in isolation with proper mocking, your unit tests can be effective even without integration testing.
+
+
+
+
+>>>>>>>>>>>>>
+Let’s break down the backend part of your **Spring Boot** application step by step. This will include explaining the flow, annotations, logic, and every detail related to the backend development.
+
+### 1. **Overview of Spring Boot Backend Architecture**
+A typical Spring Boot application follows the **MVC (Model-View-Controller)** pattern, where:
+- **Model** represents the data and business logic (entities, services, DTOs).
+- **View** is typically handled by the frontend (in your case, Angular).
+- **Controller** handles HTTP requests and routes them to the appropriate services.
+
+Your backend consists of **Controllers**, **Services**, **Repositories**, and **Models**, each having specific roles and responsibilities.
+
+---
+
+### 2. **Backend Flow in Your Project**
+
+1. **Client (Angular) Sends HTTP Request**: The Angular frontend sends a request to a particular endpoint (e.g., to create or fetch expenses).
+2. **Controller Receives the Request**: The controller in Spring Boot is responsible for receiving the request. It maps HTTP requests to Java methods.
+3. **Service Layer Handles Business Logic**: The controller forwards the request to the service layer, which contains the core business logic (e.g., validating input, interacting with repositories).
+4. **Repository Layer Interacts with the Database**: The service layer interacts with the repository layer to perform CRUD (Create, Read, Update, Delete) operations on the database.
+5. **Response Sent Back to Client**: Once the operation is complete, the controller sends a response back to the Angular frontend in the form of a JSON object or HTTP status code.
+
+---
+
+### 3. **Annotations Used in the Backend**
+Spring Boot uses annotations to simplify the development process. Let’s look at the key annotations used in your project and their purpose.
+
+#### **Controller Layer Annotations**
+1. **`@RestController`**
+   - Used to define a **controller** that handles HTTP requests. This annotation is a combination of `@Controller` and `@ResponseBody`, meaning the controller will return a response in JSON format by default.
+   - Example:
+     ```java
+     @RestController
+     @RequestMapping("/expense")
+     public class ExpenseController {
+     }
+     ```
+
+2. **`@RequestMapping`**
+   - Maps **HTTP requests** to specific controller methods or classes. It can be used on a class level or method level.
+   - Example:
+     ```java
+     @RequestMapping("/expense")
+     public class ExpenseController {
+         @GetMapping("/{id}")
+         public ResponseEntity<ExpenseDto> getExpenseById(@PathVariable Integer id) {
+             // Logic here
+         }
+     }
+     ```
+
+3. **`@GetMapping`, `@PostMapping`, `@PutMapping`, `@DeleteMapping`**
+   - These annotations map specific HTTP methods (GET, POST, PUT, DELETE) to the corresponding Java methods in the controller.
+   - Example:
+     ```java
+     @GetMapping("/{id}")
+     public ResponseEntity<ExpenseDto> getExpenseById(@PathVariable Integer id) {
+         // Logic for GET request
+     }
+
+     @PostMapping
+     public ResponseEntity<ExpenseDto> createExpense(@RequestBody ExpenseDto expenseDto) {
+         // Logic for POST request
+     }
+     ```
+
+4. **`@RequestBody`**
+   - Used to bind the **body of the HTTP request** (usually in JSON format) to a method parameter.
+   - Example:
+     ```java
+     public ResponseEntity<ExpenseDto> createExpense(@RequestBody ExpenseDto expenseDto) {
+         // This binds the JSON request body to `expenseDto`
+     }
+     ```
+
+5. **`@PathVariable`**
+   - Extracts a value from the **URI path** and binds it to a method parameter. Often used for dynamic URL segments.
+   - Example:
+     ```java
+     @GetMapping("/{id}")
+     public ResponseEntity<ExpenseDto> getExpenseById(@PathVariable Integer id) {
+         // `id` is extracted from the path variable in the URL
+     }
+     ```
+
+6. **`@ResponseStatus`**
+   - Sets a specific **HTTP status code** in the response.
+   - Example:
+     ```java
+     @DeleteMapping("/{id}")
+     @ResponseStatus(HttpStatus.NO_CONTENT)
+     public void deleteExpense(@PathVariable Integer id) {
+         // This will return HTTP 204 (No Content) after deleting
+     }
+     ```
+
+#### **Service Layer Annotations**
+1. **`@Service`**
+   - Indicates that a class is a **service**. It contains the business logic and interacts with the repository layer. Spring will manage it as a Spring bean.
+   - Example:
+     ```java
+     @Service
+     public class ExpenseService {
+     }
+     ```
+
+2. **`@Transactional`**
+   - Marks a method or class to be part of a **transaction**. This ensures that all operations within a method either complete successfully or fail and rollback.
+   - Example:
+     ```java
+     @Transactional
+     public ExpenseDto addNewExpense(ExpenseDto expenseDto) {
+         // The entire method is transactional
+     }
+     ```
+
+#### **Repository Layer Annotations**
+1. **`@Repository`**
+   - Marks a class as a **data access object (DAO)**, meaning it handles database interactions. Repositories extend `JpaRepository` or `CrudRepository` in Spring Data JPA.
+   - Example:
+     ```java
+     @Repository
+     public interface ExpenseRepository extends JpaRepository<Expense, Integer> {
+     }
+     ```
+
+#### **Model Layer (Entities) Annotations**
+1. **`@Entity`**
+   - Marks a class as a **JPA entity** that maps to a database table.
+   - Example:
+     ```java
+     @Entity
+     public class Expense {
+     }
+     ```
+
+2. **`@Id` and `@GeneratedValue`**
+   - `@Id` marks a field as the **primary key**.
+   - `@GeneratedValue` indicates that the value of the primary key is **auto-generated**.
+   - Example:
+     ```java
+     @Id
+     @GeneratedValue(strategy = GenerationType.IDENTITY)
+     private Integer id;
+     ```
+
+3. **`@Column`**
+   - Used to specify **details of a column** in the database, such as column name, data type, length, and whether it is nullable.
+   - Example:
+     ```java
+     @Column(name = "expense_amount", nullable = false)
+     private Integer expenseAmount;
+     ```
+
+4. **`@Table`**
+   - Specifies the name of the **table** that the entity should map to.
+   - Example:
+     ```java
+     @Entity
+     @Table(name = "expenses")
+     public class Expense {
+     }
+     ```
+
+---
+
+### 4. **Backend Logic Explanation**
+Let’s dive into the core logic implemented in the backend, specifically the **Controller**, **Service**, and **Repository** layers.
+
+#### **Controller Layer (ExpenseController)**
+
+The controller handles incoming HTTP requests and delegates business logic to the service layer.
+
+Example:
+```java
+@RestController
+@RequestMapping("/expense")
+public class ExpenseController {
+    private final ExpenseService expenseService;
+
+    @Autowired
+    public ExpenseController(ExpenseService expenseService) {
+        this.expenseService = expenseService;
+    }
+
+    @GetMapping("/{id}")
+    public ResponseEntity<ExpenseDto> getExpenseById(@PathVariable Integer id) {
+        ExpenseDto expenseDto = expenseService.getExpenseById(id);
+        return ResponseEntity.ok(expenseDto);
+    }
+
+    @PostMapping
+    public ResponseEntity<ExpenseDto> createExpense(@RequestBody ExpenseDto expenseDto) {
+        ExpenseDto createdExpense = expenseService.addNewExpense(expenseDto);
+        return new ResponseEntity<>(createdExpense, HttpStatus.CREATED);
+    }
+}
+```
+
+**Flow:**
+- The Angular frontend sends a request to `/expense` (e.g., a GET request for a specific expense ID or a POST request to create a new expense).
+- The **controller** methods receive the HTTP request, and based on the request method (GET/POST/PUT/DELETE), different controller methods are triggered.
+- The controller uses `@Autowired` to inject the **ExpenseService**, delegating the business logic to this service.
+- Once the service has processed the request, the controller returns a `ResponseEntity` containing the response body and an appropriate HTTP status code (`OK`, `CREATED`, etc.).
+
+---
+
+#### **Service Layer (ExpenseService)**
+
+The service layer contains the business logic, such as validation, calculations, or interaction with the repository.
+
+Example:
+```java
+@Service
+public class ExpenseService {
+    private final ExpenseRepository expenseRepository;
+
+    @Autowired
+    public ExpenseService(ExpenseRepository expenseRepository) {
+        this.expenseRepository = expenseRepository;
+    }
+
+    public ExpenseDto getExpenseById(Integer id) {
+        Expense expense = expenseRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Expense not found for id: " + id));
+        return ExpenseMapper.toDto(expense);
+    }
+
+    public ExpenseDto addNewExpense(ExpenseDto expenseDto) {
+        Expense expense = ExpenseMapper.toEntity(expenseDto);
+        expense = expenseRepository.save(expense);
+        return ExpenseMapper.toDto(expense);
+    }
+}
+```
+
+**Flow:**
+- The service layer is responsible for handling the **business logic**. It interacts with the repository to fetch or persist data.
+- In `getExpenseById()`, the service retrieves an expense from the repository and maps it to a DTO (data transfer object) before returning it to the controller.
+- The `addNewExpense()` method converts the DTO received from the controller into an entity object, saves it using the repository,
+
+ and then converts it back to a DTO for the response.
+
+---
+
+#### **Repository Layer (ExpenseRepository)**
+
+The repository layer interacts with the **database**. It uses Spring Data JPA to abstract common database operations.
+
+Example:
+```java
+@Repository
+public interface ExpenseRepository extends
+
+>>>>>>>>>>>>>>>>>>>
+
+
+Certainly! I'll provide a comprehensive explanation of the backend part of your application, focusing on the flow, annotations, logic, and how different components interact with each other.
+
+Your application comprises three main entities:
+
+1. **User**
+2. **Expense**
+3. **Budget**
+
+Each entity has its own model, DTO (Data Transfer Object), mapper, service, repository, and controller. The application is built using **Spring Boot**, which is a framework that simplifies the development of Java applications by providing features like dependency injection, auto-configuration, and more.
+
+---
+
+## **Project Structure**
+
+First, let's understand the overall structure of your project:
+
+```
+src
+├── main
+│   └── java
+│       └── yg.bootcamp.demo
+│           ├── model
+│           │   ├── User.java
+│           │   ├── Expense.java
+│           │   └── Budget.java
+│           ├── dto
+│           │   ├── UserDto.java
+│           │   ├── ExpenseDto.java
+│           │   └── BudgetDto.java
+│           ├── mapper
+│           │   ├── UserMapper.java
+│           │   ├── ExpenseMapper.java
+│           │   └── BudgetMapper.java
+│           ├── repository
+│           │   ├── UserRepository.java
+│           │   ├── ExpenseRepository.java
+│           │   └── BudgetRepository.java
+│           ├── service
+│           │   ├── UserService.java
+│           │   ├── ExpenseService.java
+│           │   └── BudgetService.java
+│           ├── controller
+│           │   ├── UserController.java
+│           │   ├── ExpenseController.java
+│           │   └── BudgetController.java
+│           └── DemoApplication.java
+└── resources
+    └── application.properties
+```
+
+---
+
+## **Understanding Each Component**
+
+### **1. Models**
+
+Models represent the entities in your application and are mapped to database tables using JPA (Java Persistence API) annotations.
+
+#### **User Model**
+
+```java
+@Entity
+@Table(name = "users")
+public class User {
+
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Integer userId;
+
+    private String username;
+
+    private String password; // In production, handle passwords securely (e.g., hashing)
+
+    private String email;
+
+    @OneToMany(mappedBy = "user", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
+    private List<Expense> expenses;
+
+    @OneToMany(mappedBy = "user", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
+    private List<Budget> budgets;
+
+    // Constructors, getters, setters
+}
+```
+
+**Annotations Explained:**
+
+- `@Entity`: Marks the class as a JPA entity (mapped to a database table).
+- `@Table(name = "users")`: Specifies the table name in the database.
+- `@Id`: Denotes the primary key of the entity.
+- `@GeneratedValue(strategy = GenerationType.IDENTITY)`: Specifies that the primary key is auto-incremented by the database.
+- `@OneToMany`: Defines a one-to-many relationship between `User` and `Expense`/`Budget`.
+    - `mappedBy = "user"`: The `user` field in `Expense`/`Budget` owns the relationship.
+    - `cascade = CascadeType.ALL`: Operations (save, delete) on `User` will cascade to `Expense`/`Budget`.
+    - `fetch = FetchType.LAZY`: Related entities are loaded on-demand.
+
+#### **Expense Model**
+
+```java
+@Entity
+public class Expense {
+
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Integer expenseId;
+
+    private Integer expenseAmount;
+
+    private String category;
+
+    private String description;
+
+    private Date expenseDate;
+
+    @Column(name = "userId", insertable = false, updatable = false)
+    private Integer userId;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "userId", nullable = false)
+    @JsonIgnore
+    private User user;
+
+    // Constructors, getters, setters
+}
+```
+
+**Annotations Explained:**
+
+- Similar to `User` model annotations.
+- `@ManyToOne`: Defines a many-to-one relationship to `User`.
+- `@JoinColumn(name = "userId", nullable = false)`: Specifies the foreign key column.
+- `@JsonIgnore`: Prevents serialization of the `user` field to avoid infinite recursion during JSON serialization.
+
+#### **Budget Model**
+
+```java
+@Entity
+public class Budget {
+
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Integer budgetId;
+
+    private String budgetName;
+
+    private String budgetDescription;
+
+    private Integer budgetAmount;
+
+    private Date startDate;
+
+    private Date endDate;
+
+    @Column(name = "userId", insertable = false, updatable = false)
+    private Integer userId;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "userId", nullable = false)
+    @JsonIgnore
+    private User user;
+
+    // Constructors, getters, setters
+}
+```
+
+**Annotations Explained:**
+
+- Similar to `Expense` model annotations.
+
+---
+
+### **2. Data Transfer Objects (DTOs)**
+
+DTOs are used to transfer data between layers of the application, especially between the controller and service layers. They prevent exposing the entity models directly and allow for more control over the data being passed around.
+
+#### **UserDto**
+
+```java
+public class UserDto {
+
+    private Integer userId;
+
+    private String username;
+
+    private String password;
+
+    private String email;
+
+    // Constructors, getters, setters
+}
+```
+
+#### **ExpenseDto**
+
+```java
+public class ExpenseDto {
+
+    private Integer expenseId;
+
+    private Integer expenseAmount;
+
+    private String category;
+
+    private String description;
+
+    private Date expenseDate;
+
+    // Constructors, getters, setters
+}
+```
+
+#### **BudgetDto**
+
+```java
+public class BudgetDto {
+
+    private Integer budgetId;
+
+    private String budgetName;
+
+    private String budgetDescription;
+
+    private Integer budgetAmount;
+
+    private Date startDate;
+
+    private Date endDate;
+
+    // Constructors, getters, setters
+}
+```
+
+---
+
+### **3. Mappers**
+
+Mappers are utility classes that convert between entities and DTOs.
+
+#### **UserMapper**
+
+```java
+public class UserMapper {
+
+    public static UserDto mapToUserDto(User user) {
+        return new UserDto(
+            user.getUserId(),
+            user.getUsername(),
+            user.getPassword(),
+            user.getEmail()
+        );
+    }
+
+    public static User mapToUser(UserDto userDto) {
+        User user = new User();
+        user.setUserId(userDto.getUserId());
+        user.setUsername(userDto.getUsername());
+        user.setPassword(userDto.getPassword());
+        user.setEmail(userDto.getEmail());
+        return user;
+    }
+}
+```
+
+#### **ExpenseMapper**
+
+```java
+public class ExpenseMapper {
+
+    public static ExpenseDto mapToExpenseDto(Expense expense) {
+        return new ExpenseDto(
+            expense.getExpenseId(),
+            expense.getExpenseAmount(),
+            expense.getCategory(),
+            expense.getDescription(),
+            expense.getExpenseDate()
+        );
+    }
+
+    public static Expense mapToExpense(ExpenseDto expenseDto) {
+        Expense expense = new Expense();
+        expense.setExpenseId(expenseDto.getExpenseId());
+        expense.setExpenseAmount(expenseDto.getExpenseAmount());
+        expense.setCategory(expenseDto.getCategory());
+        expense.setDescription(expenseDto.getDescription());
+        expense.setExpenseDate(expenseDto.getExpenseDate());
+        return expense;
+    }
+}
+```
+
+#### **BudgetMapper**
+
+```java
+public class BudgetMapper {
+
+    public static BudgetDto mapToBudgetDto(Budget budget) {
+        return new BudgetDto(
+            budget.getBudgetId(),
+            budget.getBudgetName(),
+            budget.getBudgetDescription(),
+            budget.getBudgetAmount(),
+            budget.getStartDate(),
+            budget.getEndDate()
+        );
+    }
+
+    public static Budget mapToBudget(BudgetDto budgetDto) {
+        Budget budget = new Budget();
+        budget.setBudgetId(budgetDto.getBudgetId());
+        budget.setBudgetName(budgetDto.getBudgetName());
+        budget.setBudgetDescription(budgetDto.getBudgetDescription());
+        budget.setBudgetAmount(budgetDto.getBudgetAmount());
+        budget.setStartDate(budgetDto.getStartDate());
+        budget.setEndDate(budgetDto.getEndDate());
+        return budget;
+    }
+}
+```
+
+---
+
+### **4. Repositories**
+
+Repositories are interfaces that extend Spring Data JPA interfaces, providing CRUD operations and custom query methods.
+
+#### **UserRepository**
+
+```java
+@Repository
+public interface UserRepository extends JpaRepository<User, Integer> {
+
+    Optional<User> findByUsername(String username);
+
+    // Additional query methods if needed
+}
+```
+
+#### **ExpenseRepository**
+
+```java
+@Repository
+public interface ExpenseRepository extends JpaRepository<Expense, Integer> {
+
+    List<Expense> findByUserId(Integer userId);
+
+    List<Expense> findByExpenseDateBetween(Date start, Date end);
+
+    // Additional query methods if needed
+}
+```
+
+#### **BudgetRepository**
+
+```java
+@Repository
+public interface BudgetRepository extends JpaRepository<Budget, Integer> {
+
+    List<Budget> findByUserId(Integer userId);
+
+    // Additional query methods if needed
+}
+```
+
+**Annotations Explained:**
+
+- `@Repository`: Indicates that the interface is a repository and enables exception translation.
+- `extends JpaRepository<T, ID>`: Provides CRUD operations for the entity `T` with ID type `ID`.
+
+---
+
+### **5. Services**
+
+Services contain the business logic and interact with repositories to perform operations.
+
+#### **UserService**
+
+```java
+@Service
+public class UserService {
+
+    @Autowired
+    private UserRepository userRepository;
+
+    public UserDto registerUser(UserDto userDto) {
+        User user = UserMapper.mapToUser(userDto);
+        User savedUser = userRepository.save(user);
+        return UserMapper.mapToUserDto(savedUser);
+    }
+
+    public UserDto getUserById(Integer userId) {
+        User user = userRepository.findById(userId)
+            .orElseThrow(() -> new RuntimeException("User not found"));
+        return UserMapper.mapToUserDto(user);
+    }
+
+    public List<UserDto> getAllUsers() {
+        List<User> users = userRepository.findAll();
+        return users.stream()
+            .map(UserMapper::mapToUserDto)
+            .collect(Collectors.toList());
+    }
+
+    public UserDto updateUser(UserDto userDto) {
+        User user = userRepository.findById(userDto.getUserId())
+            .orElseThrow(() -> new RuntimeException("User not found"));
+        user.setUsername(userDto.getUsername());
+        user.setEmail(userDto.getEmail());
+        // Update other fields as needed
+        User updatedUser = userRepository.save(user);
+        return UserMapper.mapToUserDto(updatedUser);
+    }
+
+    public void deleteUser(Integer userId) {
+        userRepository.deleteById(userId);
+    }
+
+    public boolean validateUser(String username, String password) {
+        User user = userRepository.findByUsername(username)
+            .orElseThrow(() -> new RuntimeException("User not found"));
+        return user.getPassword().equals(password); // In production, use password hashing
+    }
+}
+```
+
+**Annotations and Logic Explained:**
+
+- `@Service`: Marks the class as a service component in Spring's component scanning.
+- `@Autowired`: Injects the `UserRepository` dependency.
+- Each method encapsulates specific business logic:
+    - **registerUser**: Registers a new user by saving the user entity to the database.
+    - **getUserById**: Retrieves a user by ID and converts it to a DTO.
+    - **getAllUsers**: Retrieves all users and maps them to DTOs.
+    - **updateUser**: Updates user information.
+    - **deleteUser**: Deletes a user by ID.
+    - **validateUser**: Validates user credentials (note: password handling should be secure in production).
+
+#### **ExpenseService**
+
+```java
+@Service
+public class ExpenseService {
+
+    @Autowired
+    private ExpenseRepository expenseRepository;
+
+    @Autowired
+    private UserRepository userRepository;
+
+    public List<ExpenseDto> getAllExpenses() {
+        List<Expense> expenses = expenseRepository.findAll();
+        return expenses.stream()
+            .map(ExpenseMapper::mapToExpenseDto)
+            .collect(Collectors.toList());
+    }
+
+    public ExpenseDto getExpenseById(Integer id) {
+        Expense expense = expenseRepository.findById(id)
+            .orElseThrow(() -> new RuntimeException("Expense not found"));
+        return ExpenseMapper.mapToExpenseDto(expense);
+    }
+
+    public ExpenseDto addNewExpense(ExpenseDto expenseDto, Integer userId) {
+        User user = userRepository.findById(userId)
+            .orElseThrow(() -> new RuntimeException("User not found"));
+        Expense expense = ExpenseMapper.mapToExpense(expenseDto);
+        expense.setUser(user);
+        Expense savedExpense = expenseRepository.save(expense);
+        return ExpenseMapper.mapToExpenseDto(savedExpense);
+    }
+
+    public ExpenseDto updateExpenseById(Integer id, ExpenseDto expenseDto) {
+        Expense existingExpense = expenseRepository.findById(id)
+            .orElseThrow(() -> new RuntimeException("Expense not found"));
+        existingExpense.setExpenseAmount(expenseDto.getExpenseAmount());
+        existingExpense.setCategory(expenseDto.getCategory());
+        existingExpense.setDescription(expenseDto.getDescription());
+        existingExpense.setExpenseDate(expenseDto.getExpenseDate());
+        Expense updatedExpense = expenseRepository.save(existingExpense);
+        return ExpenseMapper.mapToExpenseDto(updatedExpense);
+    }
+
+    public void deleteExpenseById(Integer id) {
+        expenseRepository.deleteById(id);
+    }
+
+    public List<ExpenseDto> getAllExpensesByUser(Integer userId) {
+        List<Expense> expenses = expenseRepository.findByUserId(userId);
+        return expenses.stream()
+            .map(ExpenseMapper::mapToExpenseDto)
+            .collect(Collectors.toList());
+    }
+}
+```
+
+**Logic Explained:**
+
+- Similar to `UserService`, but operations are specific to `Expense`.
+- **getAllExpensesByUser**: Retrieves expenses associated with a specific user.
+
+#### **BudgetService**
+
+```java
+@Service
+public class BudgetService {
+
+    @Autowired
+    private BudgetRepository budgetRepository;
+
+    @Autowired
+    private UserRepository userRepository;
+
+    @Autowired
+    private ExpenseRepository expenseRepository;
+
+    public List<BudgetDto> getAllBudgets() {
+        List<Budget> budgets = budgetRepository.findAll();
+        return budgets.stream()
+            .map(BudgetMapper::mapToBudgetDto)
+            .collect(Collectors.toList());
+    }
+
+    public BudgetDto getBudgetById(Integer id) {
+        Budget budget = budgetRepository.findById(id)
+            .orElseThrow(() -> new RuntimeException("Budget not found"));
+        return BudgetMapper.mapToBudgetDto(budget);
+    }
+
+    public BudgetDto addNewBudget(BudgetDto budgetDto, Integer userId) {
+        User user = userRepository.findById(userId)
+            .orElseThrow(() -> new RuntimeException("User not found"));
+        Budget budget = BudgetMapper.mapToBudget(budgetDto);
+        budget.setUser(user);
+        Budget savedBudget = budgetRepository.save(budget);
+        return BudgetMapper.mapToBudgetDto(savedBudget);
+    }
+
+    public BudgetDto updateBudgetById(Integer id, BudgetDto budgetDto) {
+        Budget existingBudget = budgetRepository.findById(id)
+            .orElseThrow(() -> new RuntimeException("Budget not found"));
+        existingBudget.setBudgetName(budgetDto.getBudgetName());
+        existingBudget.setBudgetDescription(budgetDto.getBudgetDescription());
+        existingBudget.setBudgetAmount(budgetDto.getBudgetAmount());
+        existingBudget.setStartDate(budgetDto.getStartDate());
+        existingBudget.setEndDate(budgetDto.getEndDate());
+        Budget updatedBudget = budgetRepository.save(existingBudget);
+        return BudgetMapper.mapToBudgetDto(updatedBudget);
+    }
+
+    public void deleteBudgetById(Integer id) {
+        budgetRepository.deleteById(id);
+    }
+
+    public List<BudgetDto> getBudgetsByUserId(Integer userId) {
+        List<Budget> budgets = budgetRepository.findByUserId(userId);
+        return budgets.stream()
+            .map(BudgetMapper::mapToBudgetDto)
+            .collect(Collectors.toList());
+    }
+
+    public String checkBudget(BudgetDto budgetDto) {
+        Date startDate = budgetDto.getStartDate();
+        Date endDate = budgetDto.getEndDate();
+        List<Expense> expenses = expenseRepository.findByExpenseDateBetween(startDate, endDate);
+        double totalExpense = expenses.stream()
+            .mapToDouble(Expense::getExpenseAmount)
+            .sum();
+        if (totalExpense < budgetDto.getBudgetAmount()) {
+            return "Congratulations! You saved " + (budgetDto.getBudgetAmount() - totalExpense);
+        } else {
+            return "You have exceeded your limit by " + (totalExpense - budgetDto.getBudgetAmount());
+        }
+    }
+}
+```
+
+**Logic Explained:**
+
+- Similar structure to other services.
+- **checkBudget**: Calculates whether the total expenses within a budget's date range exceed the budget amount.
+
+---
+
+### **6. Controllers**
+
+Controllers handle HTTP requests and map them to service methods.
+
+#### **UserController**
+
+```java
+@RestController
+@RequestMapping("/api/users")
+public class UserController {
+
+    @Autowired
+    private UserService userService;
+
+    @PostMapping("/register")
+    public ResponseEntity<UserDto> registerUser(@RequestBody UserDto userDto) {
+        UserDto registeredUser = userService.registerUser(userDto);
+        return new ResponseEntity<>(registeredUser, HttpStatus.CREATED);
+    }
+
+    @GetMapping("/{id}")
+    public ResponseEntity<UserDto> getUserById(@PathVariable("id") Integer userId) {
+        UserDto userDto = userService.getUserById(userId);
+        return new ResponseEntity<>(userDto, HttpStatus.OK);
+    }
+
+    @GetMapping
+    public ResponseEntity<List<UserDto>> getAllUsers() {
+        List<UserDto> users = userService.getAllUsers();
+        return new ResponseEntity<>(users, HttpStatus.OK);
+    }
+
+    @PutMapping("/{id}")
+    public ResponseEntity<UserDto> updateUser(@PathVariable("id") Integer userId, @RequestBody UserDto userDto) {
+        userDto.setUserId(userId);
+        UserDto updatedUser = userService.updateUser(userDto);
+        return new ResponseEntity<>(updatedUser, HttpStatus.OK);
+    }
+
+    @DeleteMapping("/{id}")
+    public ResponseEntity<String> deleteUser(@PathVariable("id") Integer userId) {
+        userService.deleteUser(userId);
+        return new ResponseEntity<>("User successfully deleted!", HttpStatus.OK);
+    }
+
+    @PostMapping("/login")
+    public ResponseEntity<String> loginUser(@RequestBody Map<String, String> loginRequest) {
+        String username = loginRequest.get("username");
+        String password = loginRequest.get("password");
+        boolean isValidUser = userService.validateUser(username, password);
+        if (isValidUser) {
+            return ResponseEntity.ok("Login successful");
+        } else {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                .body("Login failed: Invalid username or password");
+        }
+    }
+}
+```
+
+**Annotations and Logic Explained:**
+
+- `@RestController`: Combines `@Controller` and `@ResponseBody`. It indicates that the class handles HTTP requests and returns data in JSON/XML format.
+- `@RequestMapping("/api/users")`: Maps the controller to the `/api/users` path.
+- `@Autowired`: Injects `UserService`.
+- HTTP Method Annotations:
+    - `@PostMapping`, `@GetMapping`, `@PutMapping`, `@DeleteMapping`: Map HTTP methods to handler methods.
+- Method Parameters:
+    - `@RequestBody`: Binds the HTTP request body to a method parameter.
+    - `@PathVariable`: Binds a URI template variable to a method parameter.
+- Return Type:
+    - `ResponseEntity<T>`: Represents the HTTP response, including status code, headers, and body.
+
+#### **ExpenseController**
+
+```java
+@RestController
+@RequestMapping("/api/expenses")
+public class ExpenseController {
+
+    @Autowired
+    private ExpenseService expenseService;
+
+    @GetMapping
+    public ResponseEntity<List<ExpenseDto>> getAllExpenses() {
+        List<ExpenseDto> expenses = expenseService.getAllExpenses();
+        return new ResponseEntity<>(expenses, HttpStatus.OK);
+    }
+
+    @GetMapping("/{id}")
+    public ResponseEntity<ExpenseDto> getExpenseById(@PathVariable("id") Integer expenseId) {
+        ExpenseDto expenseDto = expenseService.getExpenseById(expenseId);
+        return new ResponseEntity<>(expenseDto, HttpStatus.OK);
+    }
+
+    @PostMapping("/user/{userId}")
+    public ResponseEntity<ExpenseDto> addExpense(@RequestBody ExpenseDto expenseDto, @PathVariable("userId") Integer userId) {
+        ExpenseDto createdExpense = expenseService.addNewExpense(expenseDto, userId);
+        return new ResponseEntity<>(createdExpense, HttpStatus.CREATED);
+    }
+
+    @GetMapping("/user/{userId}")
+    public ResponseEntity<List<ExpenseDto>> getExpensesByUserId(@PathVariable("userId") Integer userId) {
+        List<ExpenseDto> expenses = expenseService.getAllExpensesByUser(userId);
+        return new ResponseEntity<>(expenses, HttpStatus.OK);
+    }
+
+    @PutMapping("/{id}")
+    public ResponseEntity<ExpenseDto> updateExpense(@PathVariable("id") Integer expenseId, @RequestBody ExpenseDto expenseDto) {
+        ExpenseDto updatedExpense = expenseService.updateExpenseById(expenseId, expenseDto);
+        return new ResponseEntity<>(updatedExpense, HttpStatus.OK);
+    }
+
+    @DeleteMapping("/{id}")
+    public ResponseEntity<String> deleteExpense(@PathVariable("id") Integer expenseId) {
+        expenseService.deleteExpenseById(expenseId);
+        return new ResponseEntity<>("Expense successfully deleted!", HttpStatus.OK);
+    }
+}
+```
+
+**Logic Explained:**
+
+- Similar structure to `UserController`.
+- Methods handle CRUD operations for `Expense`.
+
+#### **BudgetController**
+
+```java
+@RestController
+@RequestMapping("/api/budgets")
+public class BudgetController {
+
+    @Autowired
+    private BudgetService budgetService;
+
+    @GetMapping
+    public ResponseEntity<List<BudgetDto>> getAllBudgets() {
+        List<BudgetDto> budgets = budgetService.getAllBudgets();
+        return new ResponseEntity<>(budgets, HttpStatus.OK);
+    }
+
+    @GetMapping("/{id}")
+    public ResponseEntity<BudgetDto> getBudgetById(@PathVariable("id") Integer budgetId) {
+        BudgetDto budgetDto = budgetService.getBudgetById(budgetId);
+        return new ResponseEntity<>(budgetDto, HttpStatus.OK);
+    }
+
+    @PostMapping("/user/{userId}")
+    public ResponseEntity<BudgetDto> addBudget(@RequestBody BudgetDto budgetDto, @PathVariable("userId") Integer userId) {
+        BudgetDto createdBudget = budgetService.addNewBudget(budgetDto, userId);
+        return new ResponseEntity<>(createdBudget, HttpStatus.CREATED);
+    }
+
+    @GetMapping("/user/{userId}")
+    public ResponseEntity<List<BudgetDto>> getBudgetsByUserId(@PathVariable("userId") Integer userId) {
+        List<BudgetDto> budgets = budgetService.getBudgetsByUserId(userId);
+        return new ResponseEntity<>(budgets, HttpStatus.OK);
+    }
+
+    @PutMapping("/{id}")
+    public ResponseEntity<BudgetDto> updateBudget(@PathVariable("id") Integer budgetId, @RequestBody BudgetDto budgetDto) {
+        BudgetDto updatedBudget = budgetService.updateBudgetById(budgetId, budgetDto);
+        return new ResponseEntity<>(updatedBudget, HttpStatus.OK);
+    }
+
+    @DeleteMapping("/{id}")
+    public ResponseEntity<String> deleteBudget(@PathVariable("id") Integer budgetId) {
+        budgetService.deleteBudgetById(budgetId);
+        return new ResponseEntity<>("Budget successfully deleted!", HttpStatus.OK);
+    }
+
+    @PostMapping("/checkbudget")
+    public ResponseEntity<String> checkBudget(@RequestBody BudgetDto budgetDto) {
+        String message = budgetService.checkBudget(budgetDto);
+        return ResponseEntity.ok(message);
+    }
+}
+```
+
+**Logic Explained:**
+
+- Similar to other controllers.
+- **checkBudget**: Endpoint to check if expenses are within budget.
+
+---
+
+## **Application Flow**
+
+1. **Client Interaction**:
+    - A client (e.g., frontend application or API consumer) sends HTTP requests to the application.
+
+2. **Controllers**:
+    - The controllers receive the HTTP requests and map them to handler methods using annotations like `@GetMapping`, `@PostMapping`, etc.
+    - They extract request parameters, path variables, and request bodies as needed.
+    - Controllers call service methods to perform business logic.
+
+3. **Services**:
+    - Services contain business logic and coordinate between controllers and repositories.
+    - They perform operations like validation, calculations, and data transformation.
+    - Services use mappers to convert between entities and DTOs.
+    - They call repository methods to interact with the database.
+
+4. **Repositories**:
+    - Repositories provide an abstraction over data persistence.
+    - They interact with the database using methods provided by Spring Data JPA.
+    - Custom query methods can be defined based on method naming conventions or using `@Query` annotations.
+
+5. **Entities and DTOs**:
+    - Entities represent the database tables.
+    - DTOs are used to transfer data between layers without exposing the entities directly.
+    - Mappers convert between entities and DTOs.
+
+6. **Database Interaction**:
+    - The application uses JPA/Hibernate to map entities to database tables.
+    - CRUD operations are performed through repositories.
+
+---
+
+## **Annotations Overview**
+
+- **Spring Framework Annotations**:
+    - `@Component`: Generic stereotype for any Spring-managed component.
+    - `@Service`: Specialization of `@Component` for service-layer classes.
+    - `@Repository`: Specialization of `@Component` for data access components.
+    - `@Controller`: Marks a class as a Spring MVC controller.
+    - `@RestController`: Combines `@Controller` and `@ResponseBody`; returns data directly in the response body.
+
+- **Spring MVC Annotations**:
+    - `@RequestMapping`: Maps HTTP requests to handler methods.
+    - `@GetMapping`, `@PostMapping`, `@PutMapping`, `@DeleteMapping`: Shorthand annotations for HTTP methods.
+    - `@RequestBody`: Binds the HTTP request body to a method parameter.
+    - `@PathVariable`: Binds a URI template variable to a method parameter.
+    - `@RequestParam`: Binds a query parameter to a method parameter.
+    - `@ResponseBody`: Indicates that the return value of a method should be bound to the web response body.
+
+- **Spring Data JPA Annotations**:
+    - `@Entity`: Specifies that the class is an entity.
+    - `@Table`: Specifies the table name.
+    - `@Id`: Specifies the primary key.
+    - `@GeneratedValue`: Provides the specification of generation strategies for the primary keys.
+    - `@Column`: Specifies a column in the database.
+    - `@OneToMany`, `@ManyToOne`, `@OneToOne`, `@ManyToMany`: Define relationships between entities.
+    - `@JoinColumn`: Specifies the foreign key column.
+
+- **Lombok Annotations** (if used):
+    - `@Data`: Generates getters, setters, `toString()`, `equals()`, and `hashCode()` methods.
+    - `@Getter`, `@Setter`: Generate getters and setters.
+    - `@NoArgsConstructor`, `@AllArgsConstructor`: Generate constructors.
+    - **Note**: Make sure to have Lombok installed and configured in your IDE.
+
+---
+
+## **Security Considerations**
+
+- **Password Handling**:
+    - Storing passwords in plain text is insecure.
+    - Use password hashing algorithms like BCrypt for storing passwords securely.
+    - Implement proper authentication and authorization mechanisms.
+
+- **Validation**:
+    - Validate user input to prevent security vulnerabilities like SQL injection and XSS.
+    - Use validation annotations like `@NotNull`, `@Size`, `@Email` from `javax.validation.constraints`.
+
+- **Exception Handling**:
+    - Implement global exception handling to handle errors gracefully.
+    - Use `@ControllerAdvice` and `@ExceptionHandler` for centralized exception management.
+
+---
+
+## **Conclusion**
+
+Your backend application is structured using standard practices in Spring Boot applications. It includes:
+
+- **Models**: Representing the data and database tables.
+- **DTOs**: For transferring data between layers.
+- **Mappers**: To convert between models and DTOs.
+- **Repositories**: For data access operations.
+- **Services**: Containing business logic.
+- **Controllers**: Handling HTTP requests and responses.
+
+Understanding the flow and annotations will help you maintain and extend the application. Ensure that you handle security aspects properly, such as password encryption and input validation.
+
+If you have any specific questions about any part of the backend or need further clarification on any component, feel free to ask!
+
